@@ -409,7 +409,12 @@ const SKIN_DEFS = {
     nature:   { syms:{k:'🌲',q:'🌸',r:'🌊',b:'🦋',n:'🐺',p:'🍀'} },
     cosmos:   { syms:{k:'🌙',q:'⭐',r:'🌟',b:'☄️',n:'🚀',p:'💫'} },
 };
+let oppSkinId = null, oppSkinCol = null;
+
 function getSkin(col) {
+    if (isOnline && oppSkinId !== null && col === oppSkinCol) {
+        return SKIN_DEFS[oppSkinId] || {};
+    }
     const id = localStorage.getItem(col==='w'?'chess_skin_white':'chess_skin_black') || 'classique';
     return SKIN_DEFS[id] || {};
 }
@@ -694,6 +699,10 @@ function launchGame(hostColor) {
     initBoard(); showGame();
     opponentQuitReceived=false;
     setConnInfo('<span class="dot dot-on"></span>Adversaire connecté');
+    if (conn) {
+        const skinId = localStorage.getItem(myColor==='w'?'chess_skin_white':'chess_skin_black') || 'classique';
+        conn.send({type:'skin_sync', col:myColor, skin:skinId});
+    }
     render();
 }
 
@@ -793,7 +802,7 @@ function startLocal() {
 function backToLobby() {
     clearTimeout(mmTimeout);
     if (peer) { peer.destroy(); peer=null; }
-    conn=null; isOnline=false; oppPseudo=''; amHost=false;
+    conn=null; isOnline=false; oppPseudo=''; amHost=false; oppSkinId=null; oppSkinCol=null;
     document.getElementById('code-display').style.display='none';
     showMMSearching(false);
     setLobbyStatus(''); showLobby();
@@ -911,6 +920,8 @@ function handleNetData(data) {
     } else if (data.type==='admin_clear') {
         board=Array(8).fill(null).map(()=>Array(8).fill(null));
         selected=null; validMoves=[]; statusMsg=''; render();
+    } else if (data.type==='skin_sync') {
+        oppSkinId=data.skin; oppSkinCol=data.col; render();
     }
 }
 
