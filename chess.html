@@ -396,8 +396,12 @@
         <div class="sp-body">
             <div class="sp-grid" id="sp-grid"></div>
             <label class="sp-toggle">
-                <input type="checkbox" id="classic-toggle" onchange="toggleClassicView(this)">
-                <span>Désactiver tous les skins</span>
+                <input type="checkbox" id="hide-my-skin" onchange="toggleHideMySkin(this)">
+                <span>Désactiver mon skin</span>
+            </label>
+            <label class="sp-toggle">
+                <input type="checkbox" id="hide-opp-skin" onchange="toggleHideOppSkin(this)">
+                <span>Masquer le skin adversaire</span>
             </label>
         </div>
     </div>
@@ -504,15 +508,19 @@ const EMOJI_LABELS = {k:'Roi',q:'Dame',r:'Tour',b:'Fou',n:'Cav.',p:'Pion'};
 let oppSkinId = null;
 
 function getSkin(col) {
-    if (localStorage.getItem('chess_view_classic') === '1') return {};
+    const hideMine = localStorage.getItem('chess_hide_my_skin') === '1';
+    const hideOpp  = localStorage.getItem('chess_hide_opp_skin') === '1';
     if (!isOnline) {
+        if (hideMine) return {};
         const id = localStorage.getItem(col==='w'?'chess_skin_white':'chess_skin_black') || 'classique';
         return SKIN_DEFS[id] || {};
     }
     if (col === myColor) {
+        if (hideMine) return {};
         const id = localStorage.getItem(col==='w'?'chess_skin_white':'chess_skin_black') || 'classique';
         return SKIN_DEFS[id] || {};
     }
+    if (hideOpp) return {};
     return SKIN_DEFS[oppSkinId] || {};
 }
 
@@ -1271,7 +1279,8 @@ function buildSkinPanel() {
         });
         grid.appendChild(card);
     });
-    document.getElementById('classic-toggle').checked = localStorage.getItem('chess_view_classic') === '1';
+    document.getElementById('hide-my-skin').checked  = localStorage.getItem('chess_hide_my_skin')  === '1';
+    document.getElementById('hide-opp-skin').checked = localStorage.getItem('chess_hide_opp_skin') === '1';
 }
 
 function toggleSkinPanel() {
@@ -1280,8 +1289,12 @@ function toggleSkinPanel() {
     panel.classList.toggle('show');
 }
 
-function toggleClassicView(cb) {
-    localStorage.setItem('chess_view_classic', cb.checked ? '1' : '0');
+function toggleHideMySkin(cb) {
+    localStorage.setItem('chess_hide_my_skin', cb.checked ? '1' : '0');
+    render();
+}
+function toggleHideOppSkin(cb) {
+    localStorage.setItem('chess_hide_opp_skin', cb.checked ? '1' : '0');
     render();
 }
 
