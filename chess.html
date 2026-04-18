@@ -146,6 +146,23 @@
         .dot-on  { background: #2ecc71; }
         .dot-off { background: #e74c3c; }
 
+        /* ── Game over overlay ── */
+        #gameover-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.82); z-index: 101;
+            align-items: center; justify-content: center;
+        }
+        #gameover-overlay.show { display: flex; }
+        .gameover-box {
+            background: #1e1e35; border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px; padding: 2.5rem 2rem; text-align: center;
+            max-width: 320px; display: flex; flex-direction: column; gap: 1.2rem;
+        }
+        .gameover-trophy { font-size: 3rem; }
+        .gameover-box h2 { font-size: 1.3rem; color: #ffd700; }
+        .gameover-box p  { opacity: 0.6; font-size: 0.9rem; }
+        .gameover-btns   { display: flex; gap: 0.7rem; justify-content: center; flex-wrap: wrap; }
+
         /* ── Quit overlay ── */
         #quit-overlay {
             display: none; position: fixed; inset: 0;
@@ -318,6 +335,19 @@
                     <button class="btn-gold" onclick="adminClearBoard()">🗑 Vider plateau</button>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── GAME OVER OVERLAY ── -->
+<div id="gameover-overlay">
+    <div class="gameover-box">
+        <div class="gameover-trophy" id="gameover-trophy">🏆</div>
+        <h2 id="gameover-msg"></h2>
+        <p id="gameover-sub"></p>
+        <div class="gameover-btns">
+            <button class="btn-gray" onclick="closeGameOver()">Voir le plateau</button>
+            <button class="btn-green" onclick="restartFromGameOver()">Recommencer</button>
         </div>
     </div>
 </div>
@@ -511,6 +541,32 @@ function doMove(fr, fc, m, fromNet=false) {
         statusMsg=inCheck(board,turn)?'Échec !':'';
     }
     if (!fromNet&&isOnline&&conn) conn.send({type:'move',fr,fc,m});
+    if (gameOver) setTimeout(showGameOver, 400);
+}
+
+function showGameOver() {
+    const isMat = statusMsg.includes('mat');
+    const isPat = statusMsg.includes('Pat');
+    document.getElementById('gameover-trophy').textContent = isPat ? '🤝' : '🏆';
+    document.getElementById('gameover-msg').textContent = statusMsg;
+    if (isOnline) {
+        const iWon = (turn==='b'&&myColor==='w') || (turn==='w'&&myColor==='b');
+        document.getElementById('gameover-sub').textContent = isPat ? 'Égalité !' : iWon ? 'Bien joué !' : 'Bonne chance la prochaine fois.';
+    } else {
+        document.getElementById('gameover-sub').textContent = isPat ? 'Partie nulle.' : '';
+    }
+    document.getElementById('gameover-overlay').classList.add('show');
+}
+
+function closeGameOver() {
+    document.getElementById('gameover-overlay').classList.remove('show');
+}
+
+function restartFromGameOver() {
+    closeGameOver();
+    myVote=null; oppVote=null;
+    if (isOnline&&conn) { conn.send({type:'restart'}); showSetup(); }
+    else { initBoard(); render(); }
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -665,6 +721,7 @@ function showLobby() {
     document.getElementById('setup').style.display='none';
     document.getElementById('game').style.display='none';
     document.getElementById('quit-overlay').classList.remove('show');
+    document.getElementById('gameover-overlay').classList.remove('show');
     document.getElementById('admin-trigger').classList.remove('visible');
     document.getElementById('pseudo-input').value=myPseudo;
 }
