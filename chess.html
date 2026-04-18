@@ -224,6 +224,42 @@
         #admin-trigger:hover { background: rgba(255,215,0,0.22); color: #ffd700; border-color: rgba(255,215,0,0.55); }
         #admin-trigger.visible { display: flex; }
 
+        /* ── Emoji pieces ── */
+        .piece-emoji { display:flex; flex-direction:column; align-items:center; line-height:1.2; }
+        .piece-emoji-lbl { font-size:0.28em; font-weight:700; opacity:0.65; margin-top:-0.05em; }
+
+        /* ── In-game skin panel ── */
+        #skin-panel {
+            display:none; width:min(90vw,510px); margin-top:0.6rem;
+            background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.13);
+            border-radius:12px; overflow:hidden;
+        }
+        #skin-panel.show { display:block; }
+        .sp-header {
+            display:flex; align-items:baseline; gap:0.6rem;
+            padding:0.42rem 0.9rem; background:rgba(255,255,255,0.08);
+        }
+        .sp-header span { font-size:0.85rem; font-weight:700; }
+        .sp-header small { font-size:0.72rem; opacity:0.4; }
+        .sp-body { padding:0.75rem; display:flex; flex-direction:column; gap:0.65rem; }
+        .sp-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:0.35rem; }
+        .sp-card {
+            background:rgba(255,255,255,0.06); border:2px solid rgba(255,255,255,0.1);
+            border-radius:9px; padding:0.5rem 0.25rem;
+            text-align:center; cursor:pointer;
+            transition:background 0.15s,border-color 0.15s;
+            display:flex; flex-direction:column; align-items:center; gap:0.2rem;
+        }
+        .sp-card:hover { background:rgba(255,255,255,0.12); }
+        .sp-card.active { border-color:#ffd700; background:rgba(255,215,0,0.1); }
+        .sp-preview { font-size:1.5rem; line-height:1; }
+        .sp-name { font-size:0.65rem; font-weight:600; opacity:0.8; }
+        .sp-toggle {
+            display:flex; align-items:center; gap:0.5rem;
+            font-size:0.82rem; cursor:pointer; opacity:0.7;
+        }
+        .sp-toggle input { cursor:pointer; }
+
         /* ── Matchmaking ── */
         .mm-searching {
             display: flex; flex-direction: column; align-items: center;
@@ -337,6 +373,20 @@
     <div id="controls">
         <button class="btn-red" onclick="confirmQuit()">Quitter la partie</button>
         <button class="btn-blue" id="btn-restart">Nouvelle partie</button>
+        <button class="btn-gray" onclick="toggleSkinPanel()">🎨 Skin</button>
+    </div>
+    <div id="skin-panel">
+        <div class="sp-header">
+            <span>🎨 Mon skin</span>
+            <small>visible par l'adversaire</small>
+        </div>
+        <div class="sp-body">
+            <div class="sp-grid" id="sp-grid"></div>
+            <label class="sp-toggle">
+                <input type="checkbox" id="classic-toggle" onchange="toggleClassicView(this)">
+                <span>Désactiver tous les skins</span>
+            </label>
+        </div>
     </div>
     <div id="conn-info"></div>
 
@@ -406,17 +456,29 @@ const SKIN_DEFS = {
     emeraude: { color:'#2ed573', shadow:'0 0 10px rgba(46,213,115,0.9),0 1px 3px #000' },
     violet:   { color:'#a29bfe', shadow:'0 0 10px rgba(162,155,254,0.9),0 1px 3px #000' },
     royaute:  { syms:{k:'👑',q:'💎',r:'🏰',b:'🔮',n:'🐴',p:'⭐'} },
-    nature:   { syms:{k:'🌲',q:'🌸',r:'🌊',b:'🦋',n:'🐺',p:'🍀'} },
-    cosmos:   { syms:{k:'🌙',q:'⭐',r:'🌟',b:'☄️',n:'🚀',p:'💫'} },
+    nature:   { syms:{k:'🌿',q:'🌸',r:'🪨',b:'🦋',n:'🦊',p:'🍀'} },
+    cosmos:   { syms:{k:'🌙',q:'🌟',r:'🛸',b:'☄️',n:'🚀',p:'💫'} },
 };
-let oppSkinId = null, oppSkinCol = null;
+const SKIN_LIST = [
+    { id:'classique', name:'Classique', preview:'♛', style:'color:#fff;text-shadow:0 0 3px #000,0 1px 4px rgba(0,0,0,0.9)' },
+    { id:'or',       name:'Doré',      preview:'♛', style:'color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,0.9),0 1px 3px #000' },
+    { id:'cristal',  name:'Cristal',   preview:'♛', style:'color:#00e5ff;text-shadow:0 0 10px rgba(0,229,255,0.9),0 1px 3px #000' },
+    { id:'rubis',    name:'Rubis',     preview:'♛', style:'color:#ff4757;text-shadow:0 0 10px rgba(255,71,87,0.9),0 1px 3px #000' },
+    { id:'emeraude', name:'Émeraude', preview:'♛', style:'color:#2ed573;text-shadow:0 0 10px rgba(46,213,115,0.9),0 1px 3px #000' },
+    { id:'violet',   name:'Violet',    preview:'♛', style:'color:#a29bfe;text-shadow:0 0 10px rgba(162,155,254,0.9),0 1px 3px #000' },
+    { id:'royaute',  name:'Royauté',  preview:'👑', secret:true },
+    { id:'nature',   name:'Nature',    preview:'🌿', secret:true },
+    { id:'cosmos',   name:'Cosmos',    preview:'🌙', secret:true },
+];
+const EMOJI_LABELS = {k:'Roi',q:'Dame',r:'Tour',b:'Fou',n:'Cav.',p:'Pion'};
+let oppSkinId = null;
 
 function getSkin(col) {
-    if (isOnline && oppSkinId !== null && col === oppSkinCol) {
-        return SKIN_DEFS[oppSkinId] || {};
-    }
-    const id = localStorage.getItem(col==='w'?'chess_skin_white':'chess_skin_black') || 'classique';
-    return SKIN_DEFS[id] || {};
+    if (localStorage.getItem('chess_view_classic') === '1') return {};
+    if (!isOnline) return col === 'w' ? (SKIN_DEFS[localStorage.getItem('chess_skin_mine') || 'classique'] || {}) : {};
+    return col === myColor
+        ? (SKIN_DEFS[localStorage.getItem('chess_skin_mine') || 'classique'] || {})
+        : (SKIN_DEFS[oppSkinId] || {});
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -652,10 +714,13 @@ function render() {
             if(ri===7){const s=document.createElement('span');s.className='coord coord-file';s.textContent=(flip?'hgfedcba':'abcdefgh')[ci];sq.appendChild(s);}
             if(board[r][c]){
                 const p=board[r][c];
-                const s=document.createElement('span');
                 const skin=getSkin(p.col);
-                s.textContent=skin.syms?skin.syms[p.t]:SYM[p.t];
-                if(!skin.syms){
+                const s=document.createElement('span');
+                if(skin.syms){
+                    s.className='piece-emoji';
+                    s.innerHTML=`<span>${skin.syms[p.t]}</span><span class="piece-emoji-lbl">${EMOJI_LABELS[p.t]}</span>`;
+                }else{
+                    s.textContent=SYM[p.t];
                     if(skin.color){
                         s.style.color=skin.color;
                         s.style.textShadow=skin.shadow;
@@ -699,10 +764,7 @@ function launchGame(hostColor) {
     initBoard(); showGame();
     opponentQuitReceived=false;
     setConnInfo('<span class="dot dot-on"></span>Adversaire connecté');
-    if (conn) {
-        const skinId = localStorage.getItem(myColor==='w'?'chess_skin_white':'chess_skin_black') || 'classique';
-        conn.send({type:'skin_sync', col:myColor, skin:skinId});
-    }
+    if (conn) conn.send({type:'skin_sync', skin: localStorage.getItem('chess_skin_mine') || 'classique'});
     render();
 }
 
@@ -802,7 +864,7 @@ function startLocal() {
 function backToLobby() {
     clearTimeout(mmTimeout);
     if (peer) { peer.destroy(); peer=null; }
-    conn=null; isOnline=false; oppPseudo=''; amHost=false; oppSkinId=null; oppSkinCol=null;
+    conn=null; isOnline=false; oppPseudo=''; amHost=false; oppSkinId=null;
     document.getElementById('code-display').style.display='none';
     showMMSearching(false);
     setLobbyStatus(''); showLobby();
@@ -921,7 +983,7 @@ function handleNetData(data) {
         board=Array(8).fill(null).map(()=>Array(8).fill(null));
         selected=null; validMoves=[]; statusMsg=''; render();
     } else if (data.type==='skin_sync') {
-        oppSkinId=data.skin; oppSkinCol=data.col; render();
+        oppSkinId=data.skin; render();
     }
 }
 
@@ -1097,6 +1159,39 @@ document.addEventListener('keydown', e => {
     if (_codeBuffer.length > _SECRET.length) _codeBuffer = _codeBuffer.slice(-_SECRET.length);
     if (_codeBuffer === _SECRET) { _codeBuffer = ''; activateAdmin(); }
 });
+
+// ── In-game skin panel ────────────────────────────────────────────────────────
+function buildSkinPanel() {
+    const grid = document.getElementById('sp-grid');
+    const current = localStorage.getItem('chess_skin_mine') || 'classique';
+    const unlocked = localStorage.getItem('chess_secret_unlocked') === '1';
+    grid.innerHTML = '';
+    SKIN_LIST.forEach(sk => {
+        if (sk.secret && !unlocked) return;
+        const card = document.createElement('div');
+        card.className = 'sp-card' + (sk.id === current ? ' active' : '');
+        const pStyle = sk.style || '';
+        card.innerHTML = `<span class="sp-preview" style="${pStyle}">${sk.preview}</span><span class="sp-name">${sk.name}</span>`;
+        card.addEventListener('click', () => {
+            localStorage.setItem('chess_skin_mine', sk.id);
+            if (isOnline && conn) conn.send({type:'skin_sync', skin: sk.id});
+            buildSkinPanel(); render();
+        });
+        grid.appendChild(card);
+    });
+    document.getElementById('classic-toggle').checked = localStorage.getItem('chess_view_classic') === '1';
+}
+
+function toggleSkinPanel() {
+    const panel = document.getElementById('skin-panel');
+    if (!panel.classList.contains('show')) buildSkinPanel();
+    panel.classList.toggle('show');
+}
+
+function toggleClassicView(cb) {
+    localStorage.setItem('chess_view_classic', cb.checked ? '1' : '0');
+    render();
+}
 
 // ── Controls ──────────────────────────────────────────────────────────────────
 document.getElementById('btn-restart').addEventListener('click', ()=>{

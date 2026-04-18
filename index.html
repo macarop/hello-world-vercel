@@ -31,40 +31,33 @@
         #skin-box {
             background: #1a1a2e;
             border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 20px; padding: 1.4rem 1.2rem;
-            max-width: 500px; width: 92%;
+            border-radius: 20px; padding: 1.5rem 1.3rem;
+            max-width: 380px; width: 92%;
             display: flex; flex-direction: column; gap: 0.9rem;
             color: #eee; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             max-height: 92vh; overflow-y: auto;
         }
         #skin-box h2 { font-size: 1.2rem; text-align: center; }
         #skin-box > p { font-size: 0.82rem; opacity: 0.5; text-align: center; }
-        #skin-columns { display: flex; gap: 0.7rem; }
-        .skin-col { flex: 1; display: flex; flex-direction: column; gap: 0.45rem; min-width: 0; }
-        .skin-col-header {
-            font-size: 0.85rem; font-weight: 700; text-align: center;
-            opacity: 0.7; padding-bottom: 0.35rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
         .skin-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 0.35rem;
+            gap: 0.45rem;
         }
         .skin-card {
             background: rgba(255,255,255,0.06);
             border: 2px solid rgba(255,255,255,0.1);
-            border-radius: 10px; padding: 0.55rem 0.2rem;
+            border-radius: 10px; padding: 0.75rem 0.3rem;
             text-align: center; cursor: pointer;
             transition: background 0.15s, border-color 0.15s;
-            display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+            display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
         }
         .skin-card:hover { background: rgba(255,255,255,0.12); }
         .skin-card.selected { border-color: #ffd700; background: rgba(255,215,0,0.1); }
         .skin-card.locked { opacity: 0.35; cursor: default; }
         .skin-card.locked:hover { background: rgba(255,255,255,0.06); }
-        .skin-card .preview { font-size: 1.7rem; line-height: 1; }
-        .skin-card .skin-name { font-size: 0.68rem; font-weight: 600; opacity: 0.85; }
+        .skin-card .preview { font-size: 2rem; line-height: 1; }
+        .skin-card .skin-name { font-size: 0.72rem; font-weight: 600; opacity: 0.85; }
         #secret-section {
             border-top: 1px solid rgba(255,255,255,0.08);
             padding-top: 0.7rem;
@@ -107,17 +100,8 @@
     <div id="skin-modal">
         <div id="skin-box">
             <h2>🎨 Mes pièces</h2>
-            <p>Choisis l'apparence de chaque camp</p>
-            <div id="skin-columns">
-                <div class="skin-col">
-                    <div class="skin-col-header">♙ Blancs</div>
-                    <div class="skin-grid" id="grid-white"></div>
-                </div>
-                <div class="skin-col">
-                    <div class="skin-col-header">♟ Noirs</div>
-                    <div class="skin-grid" id="grid-black"></div>
-                </div>
-            </div>
+            <p>Apparence de tes pièces, visible par ton adversaire</p>
+            <div class="skin-grid" id="skin-grid"></div>
             <div id="secret-section">
                 <div id="secret-locked-ui">
                     <p class="secret-hint">🔒 Skins secrets — entre le code pour les débloquer</p>
@@ -136,52 +120,37 @@
 
     <script>
     const SKINS = [
-        { id:'classique', name:'Classique',
-          styleW:'color:#fff;text-shadow:0 0 3px #000,0 1px 4px rgba(0,0,0,0.9)',
-          styleB:'color:#555;text-shadow:0 0 1px rgba(255,255,255,0.5)', piece:'♛', secret:false },
-        { id:'or',       name:'Doré',
-          style:'color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,0.9),0 1px 3px #000', piece:'♛', secret:false },
-        { id:'cristal',  name:'Cristal',
-          style:'color:#00e5ff;text-shadow:0 0 10px rgba(0,229,255,0.9),0 1px 3px #000', piece:'♛', secret:false },
-        { id:'rubis',    name:'Rubis',
-          style:'color:#ff4757;text-shadow:0 0 10px rgba(255,71,87,0.9),0 1px 3px #000', piece:'♛', secret:false },
-        { id:'emeraude', name:'Émeraude',
-          style:'color:#2ed573;text-shadow:0 0 10px rgba(46,213,115,0.9),0 1px 3px #000', piece:'♛', secret:false },
-        { id:'violet',   name:'Violet',
-          style:'color:#a29bfe;text-shadow:0 0 10px rgba(162,155,254,0.9),0 1px 3px #000', piece:'♛', secret:false },
-        { id:'royaute',  name:'Royauté',  emoji:'👑', secret:true },
-        { id:'nature',   name:'Nature',   emoji:'🌲', secret:true },
-        { id:'cosmos',   name:'Cosmos',   emoji:'🌙', secret:true },
+        { id:'classique', name:'Classique', preview:'♛', style:'color:#fff;text-shadow:0 0 3px #000,0 1px 4px rgba(0,0,0,0.9)' },
+        { id:'or',       name:'Doré',      preview:'♛', style:'color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,0.9),0 1px 3px #000' },
+        { id:'cristal',  name:'Cristal',   preview:'♛', style:'color:#00e5ff;text-shadow:0 0 10px rgba(0,229,255,0.9),0 1px 3px #000' },
+        { id:'rubis',    name:'Rubis',     preview:'♛', style:'color:#ff4757;text-shadow:0 0 10px rgba(255,71,87,0.9),0 1px 3px #000' },
+        { id:'emeraude', name:'Émeraude', preview:'♛', style:'color:#2ed573;text-shadow:0 0 10px rgba(46,213,115,0.9),0 1px 3px #000' },
+        { id:'violet',   name:'Violet',    preview:'♛', style:'color:#a29bfe;text-shadow:0 0 10px rgba(162,155,254,0.9),0 1px 3px #000' },
+        { id:'royaute',  name:'Royauté',  preview:'👑', secret:true },
+        { id:'nature',   name:'Nature',    preview:'🌿', secret:true },
+        { id:'cosmos',   name:'Cosmos',    preview:'🌙', secret:true },
     ];
 
     function isUnlocked() {
         return localStorage.getItem('chess_secret_unlocked') === '1';
     }
 
-    function buildGrid(col) {
-        const grid = document.getElementById(col === 'w' ? 'grid-white' : 'grid-black');
-        const lsKey = col === 'w' ? 'chess_skin_white' : 'chess_skin_black';
-        const selected = localStorage.getItem(lsKey) || 'classique';
+    function buildGrid() {
+        const grid = document.getElementById('skin-grid');
+        const selected = localStorage.getItem('chess_skin_mine') || 'classique';
         const unlocked = isUnlocked();
         grid.innerHTML = '';
         SKINS.forEach(sk => {
-            const card = document.createElement('div');
             const isLocked = sk.secret && !unlocked;
+            const card = document.createElement('div');
             card.className = 'skin-card' + (sk.id === selected ? ' selected' : '') + (isLocked ? ' locked' : '');
-            let pStyle = '', pContent = '';
-            if (isLocked) {
-                pContent = '🔒';
-            } else if (sk.emoji) {
-                pContent = sk.emoji;
-            } else {
-                pStyle = col === 'w' ? (sk.styleW || sk.style) : (sk.styleB || sk.style);
-                pContent = sk.piece;
-            }
+            const pStyle = isLocked || sk.secret ? '' : sk.style;
+            const pContent = isLocked ? '🔒' : sk.preview;
             card.innerHTML = `<span class="preview" style="${pStyle}">${pContent}</span><span class="skin-name">${sk.name}</span>`;
             if (!isLocked) {
                 card.addEventListener('click', () => {
-                    localStorage.setItem(lsKey, sk.id);
-                    buildGrid('w'); buildGrid('b');
+                    localStorage.setItem('chess_skin_mine', sk.id);
+                    buildGrid();
                 });
             }
             grid.appendChild(card);
@@ -195,7 +164,7 @@
     }
 
     function openSkins() {
-        buildGrid('w'); buildGrid('b');
+        buildGrid();
         updateSecretUI();
         document.getElementById('skin-modal').classList.add('show');
     }
@@ -205,7 +174,7 @@
         if (val === 'CHESS2011') {
             localStorage.setItem('chess_secret_unlocked', '1');
             updateSecretUI();
-            buildGrid('w'); buildGrid('b');
+            buildGrid();
         } else {
             const inp = document.getElementById('secret-code-input');
             inp.style.borderColor = '#e74c3c';
