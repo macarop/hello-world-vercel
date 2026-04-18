@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Échecs — Maxence</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1.5rem 1rem;
+        }
+        h1 { margin-bottom: 0.4rem; font-size: 1.8rem; }
+        #status {
+            min-height: 1.6rem;
+            font-size: 1.1rem;
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 0.3rem;
+        }
+        #turn {
+            font-size: 1rem;
+            opacity: 0.75;
+            margin-bottom: 0.8rem;
+        }
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            border: 3px solid #444;
+            width: min(90vw, 520px);
+            height: min(90vw, 520px);
+        }
+        .square {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            font-size: calc(min(90vw, 520px) / 9.5);
+            user-select: none;
+        }
+        .light { background: #f0d9b5; }
+        .dark  { background: #b58863; }
+        .selected    { background: #6abf6a !important; }
+        .in-check    { background: #e74c3c !important; }
+        .valid-move::after {
+            content: '';
+            width: 32%;
+            height: 32%;
+            background: rgba(0,0,0,0.22);
+            border-radius: 50%;
+            position: absolute;
+            pointer-events: none;
+        }
+        .valid-capture { box-shadow: inset 0 0 0 5px rgba(0,0,0,0.25); }
+        .coord {
+            position: absolute;
+            font-size: 10px;
+            font-weight: 700;
+            pointer-events: none;
+        }
+        .coord-rank { bottom: 2px; left: 3px; color: rgba(0,0,0,0.45); }
+        .coord-file { top: 2px; right: 3px; color: rgba(0,0,0,0.45); }
+        .light .coord-rank, .light .coord-file { color: rgba(181,136,99,0.9); }
+        .dark  .coord-rank, .dark  .coord-file { color: rgba(240,217,181,0.9); }
+        #controls {
+            margin-top: 1.2rem;
+            display: flex;
+            gap: 0.8rem;
+        }
+        button, .back-btn {
+            padding: 0.6rem 1.4rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+        #btn-restart { background: #3498db; color: white; }
+        #btn-restart:hover { background: #2980b9; }
+        .back-btn { background: #444; color: white; }
+        .back-btn:hover { background: #333; }
+    </style>
+</head>
+<body>
+    <h1>♟ Échecs</h1>
+    <div id="status"></div>
+    <div id="turn"></div>
+    <div id="board"></div>
+    <div id="controls">
+        <a href="index.html" class="back-btn">← Retour</a>
+        <button id="btn-restart">Nouvelle partie</button>
+    </div>
+
+    <script>
+    const SYM = {
+        w: { k:'♔', q:'♕', r:'♖', b:'♗', n:'♘', p:'♙' },
+        b: { k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' }
+    };
+
+    let board, turn, selected, validMoves, ep, cr, gameOver, statusMsg;
+
+    function init() {
+        board = Array(8).fill(null).map(() => Array(8).fill(null));
+        const back = ['r','n','b','q','k','b','n','r'];
+        for (let c = 0; c < 8; c++) {
+            board[0][c] = { t: back[c], col: 'b' };
+            board[1][c] = { t: 'p', col: 'b' };
+            board[6][c] = { t: 'p', col: 'w' };
+            board[7][c] = { t: back[c], col: 'w' };
+        }
+        turn = 'w'; selected = null; validMoves = [];
+        ep = null; cr = { w:{k:true,q:true}, b:{k:true,q:true} };
+        gameOver = false; statusMsg = '';
+        render();
+    }
+
+    const ib = (r, c) => r >= 0 && r < 8 && c >= 0 && c < 8;
+
+    function copyB(b) { return b.map(row => row.map(p => p ? {...p} : null)); }
+
+    function pseudoLegal(b, r, c, epTarget) {
+        const p = b[r][c]; if (!p) return [];
+        const { t, col } = p;
+        const opp = col === 'w' ? 'b' : 'w';
+        const mv = [];
+        const free = (nr, nc) => ib(nr,nc) && !b[nr][nc];
+        const foe  = (nr, nc) => ib(nr,nc) && b[nr][nc] && b[nr][nc].col === opp;
+        const ok   = (nr, nc) => free(nr,nc) || foe(nr,nc);
+
+        if (t === 'p') {
+            const d = col === 'w' ? -1 : 1, sr = col === 'w' ? 6 : 1;
+            if (free(r+d, c)) {
+                mv.push({r:r+d, c});
+                if (r === sr && free(r+2*d, c)) mv.push({r:r+2*d, c});
+            }
+            for (const dc of [-1,1]) {
+                if (foe(r+d, c+dc)) mv.push({r:r+d, c:c+dc});
+                if (epTarget && epTarget.r===r+d && epTarget.c===c+dc)
+                    mv.push({r:r+d, c:c+dc, ep:true});
+            }
+        } else if (t === 'n') {
+            for (const [dr,dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]])
+                if (ok(r+dr, c+dc)) mv.push({r:r+dr, c:c+dc});
+        } else if (t === 'k') {
+            for (const [dr,dc] of [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]])
+                if (ok(r+dr, c+dc)) mv.push({r:r+dr, c:c+dc});
+        } else {
+            const dirs = [];
+            if (t==='r'||t==='q') dirs.push([-1,0],[1,0],[0,-1],[0,1]);
+            if (t==='b'||t==='q') dirs.push([-1,-1],[-1,1],[1,-1],[1,1]);
+            for (const [dr,dc] of dirs) {
+                let nr=r+dr, nc=c+dc;
+                while (ib(nr,nc)) {
+                    if (!b[nr][nc]) { mv.push({r:nr,c:nc}); }
+                    else { if (b[nr][nc].col===opp) mv.push({r:nr,c:nc}); break; }
+                    nr+=dr; nc+=dc;
+                }
+            }
+        }
+        return mv;
+    }
+
+    function applyMv(b, fr, fc, m) {
+        const p = b[fr][fc];
+        b[m.r][m.c] = p; b[fr][fc] = null;
+        if (m.ep) b[fr][m.c] = null;
+        if (m.castle==='k') { b[fr][5]=b[fr][7]; b[fr][7]=null; }
+        if (m.castle==='q') { b[fr][3]=b[fr][0]; b[fr][0]=null; }
+        if (p.t==='p' && (m.r===0||m.r===7)) b[m.r][m.c]={t:'q',col:p.col};
+    }
+
+    function inCheck(b, col) {
+        let kr=-1, kc=-1;
+        outer: for (let r=0;r<8;r++) for (let c=0;c<8;c++)
+            if (b[r][c]?.t==='k' && b[r][c]?.col===col) { kr=r; kc=c; break outer; }
+        const opp = col==='w'?'b':'w';
+        for (let r=0;r<8;r++) for (let c=0;c<8;c++)
+            if (b[r][c]?.col===opp)
+                if (pseudoLegal(b,r,c,null).some(m=>m.r===kr&&m.c===kc)) return true;
+        return false;
+    }
+
+    function castleMoves(b, r, c, col, rights) {
+        const mv = [];
+        if (inCheck(b, col)) return mv;
+        if (rights[col].k && !b[r][c+1] && !b[r][c+2]) {
+            const b1=copyB(b); applyMv(b1,r,c,{r,c:c+1});
+            const b2=copyB(b); applyMv(b2,r,c,{r,c:c+2});
+            if (!inCheck(b1,col) && !inCheck(b2,col)) mv.push({r,c:c+2,castle:'k'});
+        }
+        if (rights[col].q && !b[r][c-1] && !b[r][c-2] && !b[r][c-3]) {
+            const b1=copyB(b); applyMv(b1,r,c,{r,c:c-1});
+            const b2=copyB(b); applyMv(b2,r,c,{r,c:c-2});
+            if (!inCheck(b1,col) && !inCheck(b2,col)) mv.push({r,c:c-2,castle:'q'});
+        }
+        return mv;
+    }
+
+    function legalMoves(b, r, c, epT, rights) {
+        const p = b[r][c]; if (!p) return [];
+        const legal = pseudoLegal(b,r,c,epT).filter(m => {
+            const nb=copyB(b); applyMv(nb,r,c,m); return !inCheck(nb,p.col);
+        });
+        if (p.t==='k') legal.push(...castleMoves(b,r,c,p.col,rights));
+        return legal;
+    }
+
+    function anyLegal(b, col, epT, rights) {
+        for (let r=0;r<8;r++) for (let c=0;c<8;c++)
+            if (b[r][c]?.col===col && legalMoves(b,r,c,epT,rights).length>0) return true;
+        return false;
+    }
+
+    function onClick(r, c) {
+        if (gameOver) return;
+        if (selected) {
+            const m = validMoves.find(m=>m.r===r&&m.c===c);
+            if (m) { doMove(selected.r, selected.c, m); selected=null; validMoves=[]; render(); return; }
+        }
+        const p = board[r][c];
+        if (p && p.col===turn) {
+            selected={r,c}; validMoves=legalMoves(board,r,c,ep,cr);
+        } else {
+            selected=null; validMoves=[];
+        }
+        render();
+    }
+
+    function doMove(fr, fc, m) {
+        const p = board[fr][fc];
+        ep = (p.t==='p' && Math.abs(m.r-fr)===2) ? {r:(fr+m.r)/2, c:fc} : null;
+        if (p.t==='k') cr[p.col]={k:false,q:false};
+        if (p.t==='r') { if(fc===7) cr[p.col].k=false; if(fc===0) cr[p.col].q=false; }
+        if(m.r===0&&m.c===7) cr.b.k=false; if(m.r===0&&m.c===0) cr.b.q=false;
+        if(m.r===7&&m.c===7) cr.w.k=false; if(m.r===7&&m.c===0) cr.w.q=false;
+        applyMv(board, fr, fc, m);
+        turn = turn==='w'?'b':'w';
+        if (!anyLegal(board,turn,ep,cr)) {
+            statusMsg = inCheck(board,turn)
+                ? `Échec et mat ! ${turn==='b'?'Blancs':'Noirs'} gagnent !`
+                : 'Pat ! Match nul.';
+            gameOver = true;
+        } else {
+            statusMsg = inCheck(board,turn) ? 'Échec !' : '';
+        }
+    }
+
+    function render() {
+        const el = document.getElementById('board');
+        el.innerHTML = '';
+        let checkKing = null;
+        if (inCheck(board,turn)) {
+            outer2: for (let r=0;r<8;r++) for (let c=0;c<8;c++)
+                if (board[r][c]?.t==='k'&&board[r][c]?.col===turn) { checkKing={r,c}; break outer2; }
+        }
+        for (let r=0;r<8;r++) {
+            for (let c=0;c<8;c++) {
+                const sq = document.createElement('div');
+                sq.className = 'square ' + ((r+c)%2===0 ? 'light' : 'dark');
+                if (selected?.r===r && selected?.c===c) sq.classList.add('selected');
+                const isValid = validMoves.find(m=>m.r===r&&m.c===c);
+                if (isValid) sq.classList.add(board[r][c]||isValid.ep ? 'valid-capture' : 'valid-move');
+                if (checkKing?.r===r && checkKing?.c===c) sq.classList.add('in-check');
+                if (c===0) { const s=document.createElement('span'); s.className='coord coord-rank'; s.textContent=8-r; sq.appendChild(s); }
+                if (r===7) { const s=document.createElement('span'); s.className='coord coord-file'; s.textContent='abcdefgh'[c]; sq.appendChild(s); }
+                if (board[r][c]) {
+                    const s=document.createElement('span');
+                    s.textContent=SYM[board[r][c].col][board[r][c].t];
+                    sq.appendChild(s);
+                }
+                sq.addEventListener('click', ()=>onClick(r,c));
+                el.appendChild(sq);
+            }
+        }
+        document.getElementById('status').textContent = statusMsg;
+        document.getElementById('turn').textContent = gameOver ? '' : (turn==='w'?'Tour des blancs ♙':'Tour des noirs ♟');
+    }
+
+    document.getElementById('btn-restart').addEventListener('click', init);
+    init();
+    </script>
+</body>
+</html>
