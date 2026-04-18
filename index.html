@@ -268,6 +268,14 @@
                 <div class="acc-msg" id="acc-import-msg"></div>
             </div>
 
+            <div class="acc-section" style="border-color:rgba(231,76,60,0.3)">
+                <h3 style="color:#e74c3c">🗑️ Réinitialiser le compte</h3>
+                <p>Supprime pseudo, skins, victoires et code personnel sur cet appareil.</p>
+                <div class="acc-row">
+                    <button onclick="resetAccount()" style="background:#c0392b;border-color:#c0392b;color:#fff">Réinitialiser</button>
+                </div>
+                <div class="acc-msg" id="acc-reset-msg"></div>
+            </div>
             <button class="acc-close" onclick="closeAccount()">Fermer</button>
         </div>
     </div>
@@ -544,6 +552,19 @@
     document.getElementById('acc-personal-code').addEventListener('keydown', e => {
         if (e.key === 'Enter') savePersonalCode();
     });
+
+    function resetAccount() {
+        if (!confirm('Réinitialiser ton compte sur cet appareil ? Cette action est irréversible.')) return;
+        ['chess_pseudo','chess_skin_white','chess_skin_black','chess_skin_mine',
+         'chess_secret_unlocked','chess_wins','chess_account_code',
+         'chess_custom_skin_white','chess_custom_skin_black',
+         'chess_hide_my_skin','chess_hide_opp_skin','chess_view_classic']
+            .forEach(k => localStorage.removeItem(k));
+        const msg = document.getElementById('acc-reset-msg');
+        msg.textContent = '✓ Compte réinitialisé.';
+        msg.className = 'acc-msg ok';
+        document.getElementById('acc-personal-code').value = '';
+    }
 
     // ── Drawing tool ──────────────────────────────────────────────────────────
     const PALETTE = ['#ffffff','#d0d0d0','#888888','#333333','#000000',
