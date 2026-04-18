@@ -226,6 +226,17 @@
         #admin-trigger:hover { background: rgba(255,215,0,0.22); color: #ffd700; border-color: rgba(255,215,0,0.55); }
         #admin-trigger.visible { display: flex; }
 
+        /* ── Piece tooltip ── */
+        #piece-tooltip {
+            position: fixed; pointer-events: none; z-index: 999;
+            background: rgba(20,20,35,0.93); border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 7px; padding: 0.28rem 0.65rem;
+            font-size: 0.8rem; font-weight: 600; color: #eee;
+            white-space: nowrap; opacity: 0; transition: opacity 0.12s;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+        }
+        #piece-tooltip.show { opacity: 1; }
+
         /* ── Emoji pieces ── */
         .piece-emoji { display:flex; flex-direction:column; align-items:center; line-height:1.2; }
         .piece-emoji-lbl { font-size:0.28em; font-weight:700; opacity:0.65; margin-top:-0.05em; }
@@ -416,6 +427,8 @@
     </div>
 </div>
 
+<div id="piece-tooltip"></div>
+
 <!-- ── GAME OVER OVERLAY ── -->
 <div id="gameover-overlay">
     <div class="gameover-box">
@@ -448,6 +461,19 @@
 <script>
 // ── Symbols ───────────────────────────────────────────────────────────────────
 const SYM = { k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' };
+const PIECE_NAMES = { k:'Roi', q:'Dame', r:'Tour', b:'Fou', n:'Cavalier', p:'Pion' };
+const COLOR_NAMES = { w:'Blancs', b:'Noirs' };
+
+const tooltip = { el: null, show(text, x, y) {
+    if (!this.el) this.el = document.getElementById('piece-tooltip');
+    this.el.textContent = text;
+    this.el.style.left = (x + 14) + 'px';
+    this.el.style.top  = (y - 34) + 'px';
+    this.el.classList.add('show');
+}, hide() {
+    if (!this.el) this.el = document.getElementById('piece-tooltip');
+    this.el.classList.remove('show');
+}};
 
 // ── Skins ─────────────────────────────────────────────────────────────────────
 const SKIN_DEFS = {
@@ -773,6 +799,12 @@ function render() {
                 }
             }
             sq.addEventListener('click',()=>onClick(r,c));
+            if (board[r][c]) {
+                const p = board[r][c];
+                const label = `${PIECE_NAMES[p.t]} — ${COLOR_NAMES[p.col]}`;
+                sq.addEventListener('mousemove', e => tooltip.show(label, e.clientX, e.clientY));
+                sq.addEventListener('mouseleave', () => tooltip.hide());
+            }
             el.appendChild(sq);
         }
     }
