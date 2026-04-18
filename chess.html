@@ -1169,7 +1169,7 @@ function adminClearBoard() {
 function promptAdminCode() {
     const input = prompt('Code admin :');
     if (input === null) return;
-    if (input === 'madmaxouLeRoi') activateAdmin();
+    if (input === 'madmaxou29112011') activateAdmin();
     else alert('Code incorrect.');
 }
 
@@ -1185,7 +1185,7 @@ function activateAdmin() {
 
 // Secret code detection
 let _codeBuffer = '';
-const _SECRET = 'madmaxouLeRoi';
+const _SECRET = 'madmaxou29112011';
 document.addEventListener('keydown', e => {
     if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
     _codeBuffer += e.key;
