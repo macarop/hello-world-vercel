@@ -5,6 +5,63 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hello World — Mathieu</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .skin-btn {
+            display: inline-block;
+            margin-top: 0.8rem;
+            padding: 0.6rem 1.4rem;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .skin-btn:hover { background: rgba(255,255,255,0.22); }
+
+        /* ── Skin modal ── */
+        #skin-modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.72); z-index: 200;
+            align-items: center; justify-content: center;
+        }
+        #skin-modal.show { display: flex; }
+        #skin-box {
+            background: #1a1a2e;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 20px; padding: 2rem 1.5rem;
+            max-width: 420px; width: 90%;
+            display: flex; flex-direction: column; gap: 1.2rem;
+            color: #eee; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        #skin-box h2 { font-size: 1.3rem; text-align: center; }
+        #skin-box p  { font-size: 0.85rem; opacity: 0.55; text-align: center; }
+        #skin-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.7rem;
+        }
+        .skin-card {
+            background: rgba(255,255,255,0.06);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px; padding: 1rem 0.5rem;
+            text-align: center; cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+        }
+        .skin-card:hover { background: rgba(255,255,255,0.12); }
+        .skin-card.selected { border-color: #ffd700; background: rgba(255,215,0,0.1); }
+        .skin-card .preview { font-size: 2.4rem; line-height: 1; }
+        .skin-card .skin-name { font-size: 0.8rem; font-weight: 600; opacity: 0.85; }
+        .skin-close {
+            padding: 0.55rem 1.4rem; border: none; border-radius: 8px;
+            background: #444; color: #fff; cursor: pointer; font-size: 0.9rem;
+            font-weight: 600; align-self: center;
+        }
+        .skin-close:hover { background: #333; }
+    </style>
 </head>
 <body>
     <main class="container">
@@ -12,6 +69,67 @@
         <p class="subtitle">Mon premier site déployé sur Vercel.</p>
         <p class="meta">Créé avec Claude · Hébergé sur Vercel · Source sur GitHub</p>
         <a href="chess.html" class="chess-btn">♟ Jouer aux échecs</a>
+        <br>
+        <button class="skin-btn" onclick="openSkins()">🎨 Personnaliser mes pièces</button>
     </main>
+
+    <!-- ── SKIN MODAL ── -->
+    <div id="skin-modal">
+        <div id="skin-box">
+            <h2>🎨 Mes pièces</h2>
+            <p>Choisir l'apparence de tes pièces (visible uniquement pour toi)</p>
+            <div id="skin-grid"></div>
+            <button class="skin-close" onclick="closeSkins()">Fermer</button>
+        </div>
+    </div>
+
+    <script>
+    const SKINS = [
+        { id:'classique', name:'Classique',  piece:'♛', color:'#fff',    shadow:'0 0 3px #000,0 1px 4px rgba(0,0,0,0.9)' },
+        { id:'or',        name:'Doré',       piece:'♛', color:'#ffd700', shadow:'0 0 10px rgba(255,215,0,0.9),0 1px 3px #000' },
+        { id:'cristal',   name:'Cristal',    piece:'♛', color:'#00e5ff', shadow:'0 0 10px rgba(0,229,255,0.9),0 1px 3px #000' },
+        { id:'rubis',     name:'Rubis',      piece:'♛', color:'#ff4757', shadow:'0 0 10px rgba(255,71,87,0.9),0 1px 3px #000' },
+        { id:'emeraude',  name:'Émeraude',   piece:'♛', color:'#2ed573', shadow:'0 0 10px rgba(46,213,115,0.9),0 1px 3px #000' },
+        { id:'violet',    name:'Violet',     piece:'♛', color:'#a29bfe', shadow:'0 0 10px rgba(162,155,254,0.9),0 1px 3px #000' },
+    ];
+
+    function getCurrentSkin() {
+        return localStorage.getItem('chess_skin') || 'classique';
+    }
+
+    function buildGrid() {
+        const current = getCurrentSkin();
+        const grid = document.getElementById('skin-grid');
+        grid.innerHTML = '';
+        SKINS.forEach(sk => {
+            const card = document.createElement('div');
+            card.className = 'skin-card' + (sk.id === current ? ' selected' : '');
+            card.innerHTML = `
+                <span class="preview" style="color:${sk.color};text-shadow:${sk.shadow}">${sk.piece}</span>
+                <span class="skin-name">${sk.name}</span>
+            `;
+            card.addEventListener('click', () => {
+                localStorage.setItem('chess_skin', sk.id);
+                document.querySelectorAll('.skin-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+            });
+            grid.appendChild(card);
+        });
+    }
+
+    function openSkins() {
+        buildGrid();
+        document.getElementById('skin-modal').classList.add('show');
+    }
+
+    function closeSkins() {
+        document.getElementById('skin-modal').classList.remove('show');
+    }
+
+    // Close on backdrop click
+    document.getElementById('skin-modal').addEventListener('click', e => {
+        if (e.target === document.getElementById('skin-modal')) closeSkins();
+    });
+    </script>
 </body>
 </html>

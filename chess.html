@@ -372,6 +372,17 @@
 // ── Symbols ───────────────────────────────────────────────────────────────────
 const SYM = { k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' };
 
+// ── Skins ─────────────────────────────────────────────────────────────────────
+const SKIN_DEFS = {
+    classique: { id:'classique', color:'#fff',    shadow:'0 0 3px #000,0 1px 4px rgba(0,0,0,0.9)' },
+    or:        { id:'or',        color:'#ffd700', shadow:'0 0 10px rgba(255,215,0,0.9),0 1px 3px #000' },
+    cristal:   { id:'cristal',   color:'#00e5ff', shadow:'0 0 10px rgba(0,229,255,0.9),0 1px 3px #000' },
+    rubis:     { id:'rubis',     color:'#ff4757', shadow:'0 0 10px rgba(255,71,87,0.9),0 1px 3px #000' },
+    emeraude:  { id:'emeraude',  color:'#2ed573', shadow:'0 0 10px rgba(46,213,115,0.9),0 1px 3px #000' },
+    violet:    { id:'violet',    color:'#a29bfe', shadow:'0 0 10px rgba(162,155,254,0.9),0 1px 3px #000' },
+};
+let mySkin = SKIN_DEFS[localStorage.getItem('chess_skin')] || SKIN_DEFS.classique;
+
 // ── State ─────────────────────────────────────────────────────────────────────
 let board, turn, selected, validMoves, ep, cr, gameOver, statusMsg;
 let peer, conn, myColor, isOnline = false;
@@ -607,10 +618,16 @@ function render() {
                 const p=board[r][c];
                 const s=document.createElement('span');
                 s.textContent=SYM[p.t];
-                s.style.color=p.col==='w'?'#fff':'#111';
-                s.style.textShadow=p.col==='w'
-                    ?'0 0 3px #000,0 1px 4px rgba(0,0,0,0.9)'
-                    :'0 0 2px rgba(255,255,255,0.3)';
+                const isMine = p.col===myColor;
+                if (isMine && mySkin && mySkin.id!=='classique') {
+                    s.style.color=mySkin.color;
+                    s.style.textShadow=mySkin.shadow;
+                } else {
+                    s.style.color=p.col==='w'?'#fff':'#111';
+                    s.style.textShadow=p.col==='w'
+                        ?'0 0 3px #000,0 1px 4px rgba(0,0,0,0.9)'
+                        :'0 0 2px rgba(255,255,255,0.3)';
+                }
                 sq.appendChild(s);
             }
             sq.addEventListener('click',()=>onClick(r,c));
