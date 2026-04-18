@@ -498,11 +498,14 @@ function doMove(fr, fc, m, fromNet=false) {
 
 // ── Render ────────────────────────────────────────────────────────────────────
 function updatePlayersBar() {
+    const bar = document.getElementById('players-bar');
+    if (!isOnline) { bar.style.display='none'; return; }
+    bar.style.display='';
     const wName=myColor==='w'?myPseudo:oppPseudo;
     const bName=myColor==='b'?myPseudo:oppPseudo;
     document.getElementById('name-w').textContent=wName||'—';
     document.getElementById('name-b').textContent=bName||'—';
-    document.getElementById('edit-btn').style.display=isOnline?'':'none';
+    document.getElementById('edit-btn').style.display='';
     const targetChip=myColor==='w'?document.getElementById('chip-w'):document.getElementById('chip-b');
     targetChip.appendChild(document.getElementById('edit-btn'));
 }
@@ -556,39 +559,9 @@ function render() {
 const VOTE_DISPLAY = { w:['♙','Blancs'], b:['♟','Noirs'], random:['🎲','Aléatoire'] };
 
 function vote(v) {
-    myVote=v;
-    ['w','r','b'].forEach(x=>document.getElementById('vb-'+x).classList.remove('active'));
-    document.getElementById('vb-'+v[0]).classList.add('active'); // 'w'->'w', 'b'->'b', 'random'->'r'
-    const [icon,label]=VOTE_DISPLAY[v];
-    document.getElementById('sp-me-vote').textContent=icon;
-    document.getElementById('sp-me-label').textContent=label;
-    document.getElementById('sp-me').className='setup-player voted-'+(v==='random'?'r':v);
-    if (conn) conn.send({type:'setup_vote', vote:v});
-    document.getElementById('setup-status').textContent='En attente de l\'adversaire…';
-    if (oppVote) tryResolveSetup();
-}
-
-function updateOppSetupVote(v) {
-    oppVote=v;
-    const [icon,label]=VOTE_DISPLAY[v];
-    document.getElementById('sp-opp-vote').textContent=icon;
-    document.getElementById('sp-opp-label').textContent=label;
-    document.getElementById('sp-opp').className='setup-player voted-'+(v==='random'?'r':v);
-    if (myVote) tryResolveSetup();
-}
-
-function tryResolveSetup() {
-    if (!amHost) return; // seul l'hôte résout
-    if (!myVote || !oppVote) return;
-    // Résolution : host=w, guest=b par défaut si conflits
-    let hostColor;
-    if (myVote==='random'||oppVote==='random') {
-        hostColor = Math.random()<0.5?'w':'b';
-    } else if (myVote!==oppVote) {
-        hostColor = myVote; // les deux ont des préférences différentes → chacun obtient ce qu'il veut
-    } else {
-        hostColor = Math.random()<0.5?'w':'b'; // même choix → pile ou face
-    }
+    // Seul l'hôte peut voter
+    if (!amHost) return;
+    const hostColor = v==='random' ? (Math.random()<0.5?'w':'b') : v;
     conn.send({type:'game_start', hostColor});
     launchGame(hostColor);
 }
@@ -606,17 +579,27 @@ function showSetup() {
     document.getElementById('setup').style.display='flex';
     document.getElementById('game').style.display='none';
     myVote=null; oppVote=null;
-    // Reset UI
     ['w','r','b'].forEach(x=>document.getElementById('vb-'+x).classList.remove('active'));
+    // Host chip = hôte, opp chip = guest (or vice versa depending on who we are)
     document.getElementById('sp-me-name').textContent=myPseudo||'Moi';
     document.getElementById('sp-opp-name').textContent=oppPseudo||'Adversaire';
     document.getElementById('sp-me-vote').textContent='';
     document.getElementById('sp-opp-vote').textContent='';
-    document.getElementById('sp-me-label').textContent='Ton choix';
-    document.getElementById('sp-opp-label').textContent='En attente…';
     document.getElementById('sp-me').className='setup-player';
     document.getElementById('sp-opp').className='setup-player';
-    document.getElementById('setup-status').textContent='';
+    // Host sees buttons; guest sees waiting message
+    const voteBtns = document.querySelector('.vote-btns');
+    if (amHost) {
+        voteBtns.style.display='flex';
+        document.getElementById('sp-me-label').textContent='Choisis les couleurs';
+        document.getElementById('sp-opp-label').textContent='En attente…';
+        document.getElementById('setup-status').textContent='';
+    } else {
+        voteBtns.style.display='none';
+        document.getElementById('sp-me-label').textContent='';
+        document.getElementById('sp-opp-label').textContent='Choisit les couleurs…';
+        document.getElementById('setup-status').textContent=`En attente du choix de ${oppPseudo||'l\'hôte'}…`;
+    }
 }
 
 // ── Pseudo ────────────────────────────────────────────────────────────────────
@@ -676,7 +659,7 @@ function setConnInfo(html)   { document.getElementById('conn-info').innerHTML=ht
 
 function startLocal() {
     myPseudo=document.getElementById('pseudo-input').value.trim()||'Joueur';
-    savePseudo(myPseudo); isOnline=false; myColor='w'; oppPseudo='Adversaire';
+    savePseudo(myPseudo); isOnline=false; myColor='w'; oppPseudo='';
     initBoard(); showGame(); setConnInfo(''); render();
 }
 
@@ -708,8 +691,6 @@ function handleNetData(data) {
         oppPseudo=data.pseudo;
         document.getElementById('sp-opp-name').textContent=oppPseudo;
         render();
-    } else if (data.type==='setup_vote') {
-        updateOppSetupVote(data.vote);
     } else if (data.type==='game_start') {
         launchGame(data.hostColor);
     }
