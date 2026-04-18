@@ -19,42 +19,28 @@
 
         /* ── Lobby ── */
         #lobby {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1.1rem;
-            max-width: 360px;
-            width: 100%;
-            margin-top: 2rem;
+            display: flex; flex-direction: column; align-items: center;
+            gap: 1.1rem; max-width: 360px; width: 100%; margin-top: 2rem;
         }
         #lobby h1 { font-size: 2rem; }
         #lobby > p { opacity: 0.6; text-align: center; font-size: 0.9rem; }
         .card {
             background: rgba(255,255,255,0.07);
             border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 12px;
-            padding: 1.2rem;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 0.65rem;
+            border-radius: 12px; padding: 1.2rem; width: 100%;
+            display: flex; flex-direction: column; gap: 0.65rem;
         }
         .card h2 { font-size: 0.95rem; opacity: 0.85; }
         .card small { opacity: 0.5; font-size: 0.8rem; }
         input[type="text"] {
-            padding: 0.55rem 0.8rem;
-            border-radius: 8px;
+            padding: 0.55rem 0.8rem; border-radius: 8px;
             border: 1px solid rgba(255,255,255,0.2);
             background: rgba(255,255,255,0.08);
-            color: #fff;
-            font-size: 1rem;
-            width: 100%;
+            color: #fff; font-size: 1rem; width: 100%;
         }
         input[type="text"].code-input {
-            font-size: 1.4rem;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            text-align: center;
+            font-size: 1.4rem; letter-spacing: 0.2em;
+            text-transform: uppercase; text-align: center;
         }
         input::placeholder { opacity: 0.38; }
         #code-display { display: none; text-align: center; }
@@ -62,52 +48,71 @@
         #code-hint { font-size: 0.78rem; opacity: 0.5; }
         #lobby-status { font-size: 0.88rem; opacity: 0.6; min-height: 1.1rem; text-align: center; }
 
+        /* ── Setup ── */
+        #setup {
+            display: none; flex-direction: column; align-items: center;
+            gap: 1.4rem; max-width: 420px; width: 100%; margin-top: 1.5rem;
+        }
+        #setup h1 { font-size: 1.7rem; }
+        #setup > p { opacity: 0.55; font-size: 0.88rem; text-align: center; }
+        .setup-players {
+            display: flex; align-items: center; gap: 1rem; width: 100%;
+            justify-content: center;
+        }
+        .setup-player {
+            flex: 1; background: rgba(255,255,255,0.06);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px; padding: 1rem 0.8rem;
+            text-align: center; transition: border-color 0.2s;
+        }
+        .setup-player.voted-w { border-color: rgba(255,255,255,0.6); }
+        .setup-player.voted-b { border-color: rgba(100,100,100,0.8); }
+        .setup-player.voted-r { border-color: #ffd700; }
+        .setup-player .sp-name { font-weight: 700; font-size: 1rem; margin-bottom: 0.4rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .setup-player .sp-vote { font-size: 1.5rem; min-height: 1.8rem; }
+        .setup-player .sp-label { font-size: 0.75rem; opacity: 0.5; margin-top: 0.2rem; min-height: 1rem; }
+        .setup-vs { font-size: 1.2rem; opacity: 0.4; flex-shrink: 0; }
+        .vote-btns {
+            display: flex; gap: 0.7rem; justify-content: center; width: 100%;
+        }
+        .vote-btn {
+            flex: 1; padding: 0.8rem 0.5rem; border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 10px; background: rgba(255,255,255,0.05);
+            color: #eee; cursor: pointer; font-size: 0.95rem; font-weight: 600;
+            display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .vote-btn:hover { background: rgba(255,255,255,0.12); }
+        .vote-btn.active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.5); }
+        .vote-btn .vb-icon { font-size: 1.6rem; }
+        .vote-btn .vb-label { font-size: 0.8rem; opacity: 0.8; }
+        #setup-status { font-size: 0.88rem; opacity: 0.6; min-height: 1.1rem; text-align: center; }
+
         /* ── Game ── */
         #game { display: none; flex-direction: column; align-items: center; }
         #game h1 { font-size: 1.6rem; margin-bottom: 0.5rem; }
-
         #players-bar {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
+            display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.5rem; font-size: 0.9rem;
         }
         .player-chip {
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            padding: 0.3rem 0.75rem;
-            border-radius: 20px;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.1);
+            display: flex; align-items: center; gap: 0.4rem;
+            padding: 0.3rem 0.75rem; border-radius: 20px;
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1);
         }
-        .chip-piece { font-size: 1.1rem; }
         .chip-name { font-weight: 600; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .chip-edit {
-            background: none; border: none; cursor: pointer;
-            color: rgba(255,255,255,0.4); font-size: 0.8rem; padding: 0;
-            transition: color 0.15s;
-        }
+        .chip-edit { background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.4); font-size: 0.8rem; padding: 0; transition: color 0.15s; }
         .chip-edit:hover { color: #fff; }
         .vs { opacity: 0.45; font-size: 0.85rem; }
-
         #status { min-height: 1.4rem; font-size: 1rem; color: #ffd700; font-weight: bold; margin-bottom: 0.15rem; }
         #turn   { font-size: 0.88rem; opacity: 0.65; margin-bottom: 0.65rem; }
-
         #board {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            grid-template-rows: repeat(8, 1fr);
-            border: 3px solid #444;
-            width: min(90vw, 510px);
-            height: min(90vw, 510px);
+            display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
+            border: 3px solid #444; width: min(90vw, 510px); height: min(90vw, 510px);
         }
         .square {
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; position: relative; aspect-ratio: 1;
-            font-size: calc(min(90vw, 510px) / 9.5);
-            user-select: none;
+            font-size: calc(min(90vw, 510px) / 9.5); user-select: none;
         }
         .light { background: #f0d9b5; }
         .dark  { background: #b58863; }
@@ -132,14 +137,10 @@
             cursor: pointer; font-size: 0.9rem; font-weight: 600;
             text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem;
         }
-        .btn-blue  { background: #3498db; color: #fff; }
-        .btn-blue:hover  { background: #2980b9; }
-        .btn-green { background: #27ae60; color: #fff; }
-        .btn-green:hover { background: #229954; }
-        .btn-gray  { background: #444; color: #fff; }
-        .btn-gray:hover  { background: #333; }
-        .btn-red   { background: #c0392b; color: #fff; }
-        .btn-red:hover   { background: #a93226; }
+        .btn-blue  { background: #3498db; color: #fff; } .btn-blue:hover  { background: #2980b9; }
+        .btn-green { background: #27ae60; color: #fff; } .btn-green:hover { background: #229954; }
+        .btn-gray  { background: #444;    color: #fff; } .btn-gray:hover  { background: #333; }
+        .btn-red   { background: #c0392b; color: #fff; } .btn-red:hover   { background: #a93226; }
         #conn-info { margin-top: 0.6rem; font-size: 0.8rem; opacity: 0.5; }
         .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
         .dot-on  { background: #2ecc71; }
@@ -168,37 +169,64 @@
 <div id="lobby">
     <h1>♟ Échecs</h1>
     <p>Joue en local ou invite un ami avec un code.</p>
-
     <div class="card">
         <h2>Ton pseudo</h2>
         <input type="text" id="pseudo-input" placeholder="Entre ton pseudo" maxlength="20">
     </div>
-
     <div class="card">
         <h2>Créer une partie en ligne</h2>
-        <small>Tu joueras les Blancs. Partage le code à ton adversaire.</small>
+        <small>Partage le code à ton adversaire.</small>
         <button class="btn-green" onclick="createGame()">Créer</button>
         <div id="code-display">
             <div id="code-text"></div>
             <div id="code-hint">Partage ce code à ton adversaire</div>
         </div>
     </div>
-
     <div class="card">
         <h2>Rejoindre une partie</h2>
-        <small>Tu joueras les Noirs.</small>
         <input type="text" id="code-input" class="code-input" placeholder="Code à 6 caractères" maxlength="6">
         <button class="btn-blue" onclick="joinGame()">Rejoindre</button>
     </div>
-
     <div class="card">
-        <button class="btn-gray" style="width:100%;justify-content:center" onclick="startLocal()">
-            Jouer en local (même écran)
-        </button>
+        <button class="btn-gray" style="width:100%;justify-content:center" onclick="startLocal()">Jouer en local (même écran)</button>
     </div>
-
     <div id="lobby-status"></div>
     <a href="index.html" class="btn btn-gray">← Retour</a>
+</div>
+
+<!-- ── SETUP ── -->
+<div id="setup">
+    <h1>♟ Avant de jouer</h1>
+    <p>Choisis ta couleur. La partie commence dès que les deux joueurs ont voté.</p>
+    <div class="setup-players">
+        <div class="setup-player" id="sp-me">
+            <div class="sp-name" id="sp-me-name">—</div>
+            <div class="sp-vote" id="sp-me-vote"></div>
+            <div class="sp-label" id="sp-me-label">Ton choix</div>
+        </div>
+        <div class="setup-vs">vs</div>
+        <div class="setup-player" id="sp-opp">
+            <div class="sp-name" id="sp-opp-name">—</div>
+            <div class="sp-vote" id="sp-opp-vote"></div>
+            <div class="sp-label" id="sp-opp-label">En attente…</div>
+        </div>
+    </div>
+    <div class="vote-btns">
+        <button class="vote-btn" id="vb-w" onclick="vote('w')">
+            <span class="vb-icon">♙</span>
+            <span class="vb-label">Blancs</span>
+        </button>
+        <button class="vote-btn" id="vb-r" onclick="vote('random')">
+            <span class="vb-icon">🎲</span>
+            <span class="vb-label">Aléatoire</span>
+        </button>
+        <button class="vote-btn" id="vb-b" onclick="vote('b')">
+            <span class="vb-icon">♟</span>
+            <span class="vb-label">Noirs</span>
+        </button>
+    </div>
+    <div id="setup-status"></div>
+    <button class="btn-gray" onclick="backToLobby()">← Annuler</button>
 </div>
 
 <!-- ── GAME ── -->
@@ -206,13 +234,13 @@
     <h1>♟ Échecs</h1>
     <div id="players-bar">
         <div class="player-chip" id="chip-w">
-            <span class="chip-piece">♙</span>
+            <span>♙</span>
             <span class="chip-name" id="name-w">—</span>
             <button class="chip-edit" id="edit-btn" title="Changer ton pseudo" onclick="changePseudo()">✏</button>
         </div>
         <span class="vs">vs</span>
         <div class="player-chip" id="chip-b">
-            <span class="chip-piece">♟</span>
+            <span>♟</span>
             <span class="chip-name" id="name-b">—</span>
         </div>
     </div>
@@ -248,6 +276,8 @@ let board, turn, selected, validMoves, ep, cr, gameOver, statusMsg;
 let peer, conn, myColor, isOnline = false;
 let myPseudo = '', oppPseudo = '';
 let opponentQuitReceived = false;
+let myVote = null, oppVote = null; // 'w' | 'b' | 'random'
+let amHost = false;
 
 // ── Chess logic ───────────────────────────────────────────────────────────────
 const ib = (r, c) => r >= 0 && r < 8 && c >= 0 && c < 8;
@@ -389,16 +419,12 @@ function doMove(fr, fc, m, fromNet=false) {
 
 // ── Render ────────────────────────────────────────────────────────────────────
 function updatePlayersBar() {
-    const wName = myColor==='w' ? myPseudo : oppPseudo;
-    const bName = myColor==='b' ? myPseudo : oppPseudo;
-    document.getElementById('name-w').textContent = wName || '—';
-    document.getElementById('name-b').textContent = bName || '—';
-    // Show edit button next to the current player's chip
-    document.getElementById('edit-btn').style.display = isOnline ? '' : 'none';
-    // Move edit button to correct chip
-    const targetChip = myColor==='w'
-        ? document.getElementById('chip-w')
-        : document.getElementById('chip-b');
+    const wName=myColor==='w'?myPseudo:oppPseudo;
+    const bName=myColor==='b'?myPseudo:oppPseudo;
+    document.getElementById('name-w').textContent=wName||'—';
+    document.getElementById('name-b').textContent=bName||'—';
+    document.getElementById('edit-btn').style.display=isOnline?'':'none';
+    const targetChip=myColor==='w'?document.getElementById('chip-w'):document.getElementById('chip-b');
     targetChip.appendChild(document.getElementById('edit-btn'));
 }
 
@@ -440,88 +466,146 @@ function render() {
     if (!gameOver) {
         const myTurn=!isOnline||turn===myColor;
         const who=turn==='w'?'Blancs':'Noirs';
-        document.getElementById('turn').textContent = myTurn ? `Ton tour — ${who}` : `Tour adversaire — ${who}`;
+        document.getElementById('turn').textContent=myTurn?`Ton tour — ${who}`:`Tour adversaire — ${who}`;
     } else {
         document.getElementById('turn').textContent='';
     }
     updatePlayersBar();
 }
 
+// ── Setup phase ───────────────────────────────────────────────────────────────
+const VOTE_DISPLAY = { w:['♙','Blancs'], b:['♟','Noirs'], random:['🎲','Aléatoire'] };
+
+function vote(v) {
+    myVote=v;
+    ['w','r','b'].forEach(x=>document.getElementById('vb-'+x).classList.remove('active'));
+    document.getElementById('vb-'+v[0]).classList.add('active'); // 'w'->'w', 'b'->'b', 'random'->'r'
+    const [icon,label]=VOTE_DISPLAY[v];
+    document.getElementById('sp-me-vote').textContent=icon;
+    document.getElementById('sp-me-label').textContent=label;
+    document.getElementById('sp-me').className='setup-player voted-'+(v==='random'?'r':v);
+    if (conn) conn.send({type:'setup_vote', vote:v});
+    document.getElementById('setup-status').textContent='En attente de l\'adversaire…';
+    if (oppVote) tryResolveSetup();
+}
+
+function updateOppSetupVote(v) {
+    oppVote=v;
+    const [icon,label]=VOTE_DISPLAY[v];
+    document.getElementById('sp-opp-vote').textContent=icon;
+    document.getElementById('sp-opp-label').textContent=label;
+    document.getElementById('sp-opp').className='setup-player voted-'+(v==='random'?'r':v);
+    if (myVote) tryResolveSetup();
+}
+
+function tryResolveSetup() {
+    if (!amHost) return; // seul l'hôte résout
+    if (!myVote || !oppVote) return;
+    // Résolution : host=w, guest=b par défaut si conflits
+    let hostColor;
+    if (myVote==='random'||oppVote==='random') {
+        hostColor = Math.random()<0.5?'w':'b';
+    } else if (myVote!==oppVote) {
+        hostColor = myVote; // les deux ont des préférences différentes → chacun obtient ce qu'il veut
+    } else {
+        hostColor = Math.random()<0.5?'w':'b'; // même choix → pile ou face
+    }
+    conn.send({type:'game_start', hostColor});
+    launchGame(hostColor);
+}
+
+function launchGame(hostColor) {
+    myColor = amHost ? hostColor : (hostColor==='w'?'b':'w');
+    initBoard(); showGame();
+    opponentQuitReceived=false;
+    setConnInfo('<span class="dot dot-on"></span>Adversaire connecté');
+    render();
+}
+
+function showSetup() {
+    document.getElementById('lobby').style.display='none';
+    document.getElementById('setup').style.display='flex';
+    document.getElementById('game').style.display='none';
+    myVote=null; oppVote=null;
+    // Reset UI
+    ['w','r','b'].forEach(x=>document.getElementById('vb-'+x).classList.remove('active'));
+    document.getElementById('sp-me-name').textContent=myPseudo||'Moi';
+    document.getElementById('sp-opp-name').textContent=oppPseudo||'Adversaire';
+    document.getElementById('sp-me-vote').textContent='';
+    document.getElementById('sp-opp-vote').textContent='';
+    document.getElementById('sp-me-label').textContent='Ton choix';
+    document.getElementById('sp-opp-label').textContent='En attente…';
+    document.getElementById('sp-me').className='setup-player';
+    document.getElementById('sp-opp').className='setup-player';
+    document.getElementById('setup-status').textContent='';
+}
+
 // ── Pseudo ────────────────────────────────────────────────────────────────────
-function getStoredPseudo() {
-    return localStorage.getItem('chess_pseudo') || '';
-}
-function savePseudo(p) {
-    localStorage.setItem('chess_pseudo', p);
-}
+function getStoredPseudo() { return localStorage.getItem('chess_pseudo')||''; }
+function savePseudo(p)     { localStorage.setItem('chess_pseudo', p); }
+
 function changePseudo() {
-    const input = prompt('Ton nouveau pseudo :', myPseudo);
-    if (input === null) return;
-    myPseudo = (input.trim() || 'Joueur').slice(0, 20);
+    const input=prompt('Ton nouveau pseudo :',myPseudo);
+    if (input===null) return;
+    myPseudo=(input.trim()||'Joueur').slice(0,20);
     savePseudo(myPseudo);
-    if (isOnline && conn) conn.send({type:'pseudo', pseudo:myPseudo});
+    if (isOnline&&conn) conn.send({type:'pseudo',pseudo:myPseudo});
     render();
 }
 
 // ── Quit ──────────────────────────────────────────────────────────────────────
 function confirmQuit() {
-    document.getElementById('quit-title').textContent = 'Quitter la partie ?';
-    document.getElementById('quit-msg').textContent = isOnline
-        ? 'Ton adversaire sera averti.'
-        : 'La partie en cours sera abandonnée.';
+    document.getElementById('quit-title').textContent='Quitter la partie ?';
+    document.getElementById('quit-msg').textContent=isOnline?'Ton adversaire sera averti.':'La partie sera abandonnée.';
+    document.querySelector('#quit-overlay .quit-btns').innerHTML=
+        '<button class="btn-gray" onclick="closeQuitOverlay()">Annuler</button>'+
+        '<button class="btn-red" onclick="doQuit()">Quitter</button>';
     document.getElementById('quit-overlay').classList.add('show');
 }
-function closeQuitOverlay() {
-    document.getElementById('quit-overlay').classList.remove('show');
-}
+function closeQuitOverlay() { document.getElementById('quit-overlay').classList.remove('show'); }
 function doQuit() {
     closeQuitOverlay();
-    if (isOnline && conn) {
-        conn.send({type:'quit', pseudo:myPseudo});
-        setTimeout(backToLobby, 500); // laisser le temps au message d'arriver
+    if (isOnline&&conn) {
+        conn.send({type:'quit',pseudo:myPseudo});
+        setTimeout(backToLobby, 500);
     } else {
         backToLobby();
     }
 }
 function showOpponentQuit(pseudo) {
-    document.getElementById('quit-title').textContent = `${pseudo || 'L\'adversaire'} a quitté`;
-    document.getElementById('quit-msg').textContent = 'La partie est terminée.';
-    // Replace buttons with single "Retour au lobby"
-    const btns = document.querySelector('#quit-overlay .quit-btns');
-    btns.innerHTML = '<button class="btn-blue" onclick="backToLobby()">Retour au lobby</button>';
+    document.getElementById('quit-title').textContent=`${pseudo||'L\'adversaire'} a quitté`;
+    document.getElementById('quit-msg').textContent='La partie est terminée.';
+    document.querySelector('#quit-overlay .quit-btns').innerHTML=
+        '<button class="btn-blue" onclick="backToLobby()">Retour au lobby</button>';
     document.getElementById('quit-overlay').classList.add('show');
 }
 
-// ── Lobby / Navigation ────────────────────────────────────────────────────────
+// ── Navigation ────────────────────────────────────────────────────────────────
 function showLobby() {
     document.getElementById('lobby').style.display='flex';
+    document.getElementById('setup').style.display='none';
     document.getElementById('game').style.display='none';
-    document.getElementById('pseudo-input').value = myPseudo;
+    document.getElementById('pseudo-input').value=myPseudo;
 }
 function showGame() {
     document.getElementById('lobby').style.display='none';
+    document.getElementById('setup').style.display='none';
     document.getElementById('game').style.display='flex';
-    // Reset quit overlay buttons
-    document.querySelector('#quit-overlay .quit-btns').innerHTML =
-        '<button class="btn-gray" onclick="closeQuitOverlay()">Annuler</button>' +
-        '<button class="btn-red" onclick="doQuit()">Quitter</button>';
 }
 function setLobbyStatus(msg) { document.getElementById('lobby-status').textContent=msg; }
 function setConnInfo(html)   { document.getElementById('conn-info').innerHTML=html; }
 
 function startLocal() {
-    myPseudo = document.getElementById('pseudo-input').value.trim() || 'Joueur';
+    myPseudo=document.getElementById('pseudo-input').value.trim()||'Joueur';
     savePseudo(myPseudo); isOnline=false; myColor='w'; oppPseudo='Adversaire';
-    initBoard(); showGame(); setConnInfo('');
-    render();
+    initBoard(); showGame(); setConnInfo(''); render();
 }
 
 function backToLobby() {
     if (peer) { peer.destroy(); peer=null; }
-    conn=null; isOnline=false; oppPseudo='';
+    conn=null; isOnline=false; oppPseudo=''; amHost=false;
     document.getElementById('code-display').style.display='none';
-    setLobbyStatus('');
-    showLobby();
+    setLobbyStatus(''); showLobby();
 }
 
 // ── PeerJS multiplayer ────────────────────────────────────────────────────────
@@ -534,15 +618,21 @@ function handleNetData(data) {
     if (data.type==='move') {
         doMove(data.fr,data.fc,data.m,true); selected=null; validMoves=[]; render();
     } else if (data.type==='restart') {
-        initBoard(); render();
+        myVote=null; oppVote=null; showSetup();
     } else if (data.type==='pseudo') {
-        oppPseudo=data.pseudo; render();
+        oppPseudo=data.pseudo;
+        document.getElementById('sp-opp-name').textContent=oppPseudo;
+        render();
     } else if (data.type==='quit') {
-        opponentQuitReceived=true;
-        showOpponentQuit(data.pseudo);
-        gameOver=true; render();
+        opponentQuitReceived=true; showOpponentQuit(data.pseudo); gameOver=true; render();
     } else if (data.type==='hello') {
-        oppPseudo=data.pseudo; render();
+        oppPseudo=data.pseudo;
+        document.getElementById('sp-opp-name').textContent=oppPseudo;
+        render();
+    } else if (data.type==='setup_vote') {
+        updateOppSetupVote(data.vote);
+    } else if (data.type==='game_start') {
+        launchGame(data.hostColor);
     }
 }
 
@@ -550,26 +640,22 @@ function attachConn(c) {
     conn=c;
     conn.on('data', handleNetData);
     conn.on('close', ()=>{
-        if (!opponentQuitReceived && document.getElementById('game').style.display!=='none') {
-            opponentQuitReceived=true;
-            showOpponentQuit(oppPseudo);
-            gameOver=true; render();
+        if (!opponentQuitReceived&&document.getElementById('game').style.display!=='none') {
+            opponentQuitReceived=true; showOpponentQuit(oppPseudo); gameOver=true; render();
         }
     });
-    conn.on('error', ()=>{ setConnInfo('<span class="dot dot-off"></span>Erreur de connexion'); });
+    conn.on('error', ()=>setConnInfo('<span class="dot dot-off"></span>Erreur de connexion'));
 }
 
-function startOnlineGame() {
-    opponentQuitReceived=false;
-    initBoard(); showGame();
-    setConnInfo('<span class="dot dot-on"></span>Adversaire connecté');
+function startSetupPhase() {
+    isOnline=true;
     conn.send({type:'hello', pseudo:myPseudo});
-    render();
+    showSetup();
 }
 
 function createGame() {
-    myPseudo = document.getElementById('pseudo-input').value.trim() || 'Joueur';
-    savePseudo(myPseudo);
+    myPseudo=document.getElementById('pseudo-input').value.trim()||'Joueur';
+    savePseudo(myPseudo); amHost=true;
     setLobbyStatus('Connexion au serveur…');
     const code=generateCode();
     if (peer) peer.destroy();
@@ -581,9 +667,7 @@ function createGame() {
     });
     peer.on('connection', c=>{
         attachConn(c);
-        c.on('open', ()=>{
-            myColor='w'; isOnline=true; startOnlineGame();
-        });
+        c.on('open', ()=>startSetupPhase());
     });
     peer.on('error', err=>{
         if (err.type==='unavailable-id') createGame();
@@ -592,8 +676,8 @@ function createGame() {
 }
 
 function joinGame() {
-    myPseudo = document.getElementById('pseudo-input').value.trim() || 'Joueur';
-    savePseudo(myPseudo);
+    myPseudo=document.getElementById('pseudo-input').value.trim()||'Joueur';
+    savePseudo(myPseudo); amHost=false;
     const code=document.getElementById('code-input').value.trim().toUpperCase();
     if (!code) return;
     setLobbyStatus('Connexion en cours…');
@@ -602,26 +686,22 @@ function joinGame() {
     peer.on('open', ()=>{
         const c=peer.connect(code);
         attachConn(c);
-        c.on('open', ()=>{
-            myColor='b'; isOnline=true; startOnlineGame();
-        });
+        c.on('open', ()=>startSetupPhase());
     });
     peer.on('error', ()=>setLobbyStatus('Code invalide ou partie introuvable.'));
 }
 
 // ── Controls ──────────────────────────────────────────────────────────────────
 document.getElementById('btn-restart').addEventListener('click', ()=>{
-    initBoard();
-    if (isOnline&&conn) conn.send({type:'restart'});
-    render();
+    myVote=null; oppVote=null;
+    if (isOnline&&conn) { conn.send({type:'restart'}); showSetup(); }
+    else { initBoard(); render(); }
 });
-document.getElementById('code-input').addEventListener('keydown', e=>{
-    if (e.key==='Enter') joinGame();
-});
+document.getElementById('code-input').addEventListener('keydown', e=>{ if(e.key==='Enter') joinGame(); });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-myPseudo = getStoredPseudo();
-document.getElementById('pseudo-input').value = myPseudo;
+myPseudo=getStoredPseudo();
+document.getElementById('pseudo-input').value=myPseudo;
 </script>
 </body>
 </html>
