@@ -39,10 +39,17 @@
         }
         #skin-box h2 { font-size: 1.2rem; text-align: center; }
         #skin-box > p { font-size: 0.82rem; opacity: 0.5; text-align: center; }
+        #skin-columns { display:flex; gap:0.7rem; }
+        .skin-col { flex:1; display:flex; flex-direction:column; gap:0.45rem; min-width:0; }
+        .skin-col-header {
+            font-size:0.82rem; font-weight:700; text-align:center;
+            opacity:0.7; padding-bottom:0.35rem;
+            border-bottom:1px solid rgba(255,255,255,0.1);
+        }
         .skin-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 0.45rem;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.35rem;
         }
         .skin-card {
             background: rgba(255,255,255,0.06);
@@ -84,6 +91,69 @@
             font-weight: 600; align-self: center;
         }
         .skin-close:hover { background: #333; }
+
+        /* ── Drawing modal ── */
+        #draw-modal {
+            display:none; position:fixed; inset:0;
+            background:rgba(0,0,0,0.88); z-index:300;
+            align-items:center; justify-content:center; padding:0.8rem;
+        }
+        #draw-modal.show { display:flex; }
+        #draw-box {
+            background:#1a1a2e; border:1px solid rgba(255,255,255,0.15);
+            border-radius:20px; padding:1.1rem; width:100%; max-width:360px;
+            display:flex; flex-direction:column; gap:0.65rem; color:#eee;
+            font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+            max-height:97vh; overflow-y:auto;
+        }
+        #draw-box h2 { font-size:1.05rem; text-align:center; margin:0; }
+        #piece-tabs { display:flex; gap:0.3rem; justify-content:center; }
+        .ptab {
+            padding:0.28rem 0.6rem; border-radius:6px;
+            background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15);
+            color:#eee; cursor:pointer; font-size:0.78rem; font-weight:700;
+            transition:background 0.12s;
+        }
+        .ptab:hover { background:rgba(255,255,255,0.15); }
+        .ptab.active { background:#ffd700; color:#1a1a2e; border-color:#ffd700; }
+        #canvas-wrap {
+            background-image:repeating-conic-gradient(#3a3a4e 0% 25%,#2a2a3e 0% 50%);
+            background-size:10px 10px; border-radius:8px;
+            display:flex; align-items:center; justify-content:center;
+            border:1px solid rgba(255,255,255,0.1); padding:4px; align-self:center;
+        }
+        #draw-canvas { display:block; border-radius:4px; cursor:crosshair; touch-action:none; }
+        #color-palette { display:flex; flex-wrap:wrap; gap:0.28rem; align-items:center; }
+        .cswatch {
+            width:22px; height:22px; border-radius:4px; cursor:pointer; flex-shrink:0;
+            border:2px solid transparent; box-sizing:border-box; transition:border-color 0.1s;
+        }
+        .cswatch.active { border-color:#ffd700; }
+        #pick-color { width:22px; height:22px; padding:0; border:none; border-radius:4px; cursor:pointer; flex-shrink:0; }
+        #tool-row { display:flex; gap:0.35rem; align-items:center; flex-wrap:wrap; }
+        .tbtn {
+            padding:0.28rem 0.6rem; border-radius:6px;
+            background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15);
+            color:#eee; cursor:pointer; font-size:0.78rem; font-weight:600;
+            transition:background 0.12s; white-space:nowrap;
+        }
+        .tbtn:hover { background:rgba(255,255,255,0.15); }
+        .tbtn.active { background:rgba(255,255,255,0.22); border-color:rgba(255,255,255,0.45); }
+        #size-btns { display:flex; gap:0.25rem; margin-left:auto; }
+        #size-btns .tbtn { padding:0.28rem 0.45rem; min-width:26px; text-align:center; }
+        #draw-preview-strip { display:flex; gap:0.4rem; justify-content:center; }
+        .prev-cell { display:flex; flex-direction:column; align-items:center; gap:0.12rem; cursor:pointer; }
+        .prev-cell canvas {
+            width:38px; height:38px; border-radius:5px;
+            border:2px solid rgba(255,255,255,0.12);
+            background-image:repeating-conic-gradient(#3a3a4e 0% 25%,#2a2a3e 0% 50%);
+            background-size:6px 6px; box-sizing:border-box;
+        }
+        .prev-cell.current canvas { border-color:#ffd700; }
+        .prev-cell span { font-size:0.58rem; opacity:0.6; }
+        #draw-footer { display:flex; gap:0.6rem; justify-content:center; }
+        .btn-save { background:#27ae60 !important; border-color:#27ae60 !important; }
+        .btn-save:hover { background:#229954 !important; }
     </style>
 </head>
 <body>
@@ -96,12 +166,56 @@
         <button class="skin-btn" onclick="openSkins()">🎨 Personnaliser mes pièces</button>
     </main>
 
+    <!-- ── DRAW MODAL ── -->
+    <div id="draw-modal">
+        <div id="draw-box">
+            <h2>✏️ Dessiner mon skin</h2>
+            <div id="piece-tabs">
+                <button class="ptab active" data-p="k">Roi</button>
+                <button class="ptab" data-p="q">Dame</button>
+                <button class="ptab" data-p="r">Tour</button>
+                <button class="ptab" data-p="b">Fou</button>
+                <button class="ptab" data-p="n">Cav.</button>
+                <button class="ptab" data-p="p">Pion</button>
+            </div>
+            <div id="canvas-wrap">
+                <canvas id="draw-canvas" width="240" height="240" style="width:240px;height:240px"></canvas>
+            </div>
+            <div id="color-palette"></div>
+            <div id="tool-row">
+                <button class="tbtn active" id="btn-pencil" onclick="setTool('pencil')">✏️ Crayon</button>
+                <button class="tbtn" id="btn-eraser" onclick="setTool('eraser')">🧹 Gomme</button>
+                <button class="tbtn" id="btn-fill" onclick="setTool('fill')">🪣 Remplir</button>
+                <button class="tbtn" onclick="clearPiece()">🗑️</button>
+                <div id="size-btns">
+                    <button class="tbtn" id="bs-s" onclick="setBrush(4)">·</button>
+                    <button class="tbtn active" id="bs-m" onclick="setBrush(10)">•</button>
+                    <button class="tbtn" id="bs-l" onclick="setBrush(20)">⬤</button>
+                </div>
+            </div>
+            <div id="draw-preview-strip"></div>
+            <div id="draw-footer">
+                <button class="tbtn" onclick="closeDrawModal()">Annuler</button>
+                <button class="tbtn btn-save" onclick="saveCustomSkin()">✅ Sauvegarder</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ── SKIN MODAL ── -->
     <div id="skin-modal">
         <div id="skin-box">
             <h2>🎨 Mes pièces</h2>
-            <p>Apparence de tes pièces, visible par ton adversaire</p>
-            <div class="skin-grid" id="skin-grid"></div>
+            <p>Choisis le skin de chaque couleur (visible par l'adversaire)</p>
+            <div id="skin-columns">
+                <div class="skin-col">
+                    <div class="skin-col-header">♙ Blancs</div>
+                    <div class="skin-grid" id="grid-white"></div>
+                </div>
+                <div class="skin-col">
+                    <div class="skin-col-header">♟ Noirs</div>
+                    <div class="skin-grid" id="grid-black"></div>
+                </div>
+            </div>
             <div id="secret-section">
                 <div id="secret-locked-ui">
                     <p class="secret-hint">🔒 Skins secrets — entre le code pour les débloquer</p>
@@ -129,29 +243,57 @@
         { id:'royaute',  name:'Royauté',  preview:'👑', secret:true },
         { id:'nature',   name:'Nature',    preview:'🌿', secret:true },
         { id:'cosmos',   name:'Cosmos',    preview:'🌙', secret:true },
+        { id:'custom',   name:'Mon dessin', preview:'✏️', custom:true },
     ];
 
     function isUnlocked() {
         return localStorage.getItem('chess_secret_unlocked') === '1';
     }
 
-    function buildGrid() {
-        const grid = document.getElementById('skin-grid');
-        const selected = localStorage.getItem('chess_skin_mine') || 'classique';
+    let drawingForCol = 'w';
+
+    function buildGrid(col) {
+        const gridId = col === 'w' ? 'grid-white' : 'grid-black';
+        const lsKey = col === 'w' ? 'chess_skin_white' : 'chess_skin_black';
+        const customKey = col === 'w' ? 'chess_custom_skin_white' : 'chess_custom_skin_black';
+        const grid = document.getElementById(gridId);
+        const selected = localStorage.getItem(lsKey) || 'classique';
         const unlocked = isUnlocked();
         grid.innerHTML = '';
         SKINS.forEach(sk => {
             const isLocked = sk.secret && !unlocked;
             const card = document.createElement('div');
             card.className = 'skin-card' + (sk.id === selected ? ' selected' : '') + (isLocked ? ' locked' : '');
-            const pStyle = isLocked || sk.secret ? '' : sk.style;
-            const pContent = isLocked ? '🔒' : sk.preview;
-            card.innerHTML = `<span class="preview" style="${pStyle}">${pContent}</span><span class="skin-name">${sk.name}</span>`;
-            if (!isLocked) {
-                card.addEventListener('click', () => {
-                    localStorage.setItem('chess_skin_mine', sk.id);
-                    buildGrid();
-                });
+
+            if (sk.custom) {
+                const customData = (() => { try { return JSON.parse(localStorage.getItem(customKey)||'{}'); } catch(e) { return {}; } })();
+                if (customData.k) {
+                    const mc = document.createElement('canvas');
+                    mc.width = 48; mc.height = 48;
+                    mc.style.cssText = 'width:2rem;height:2rem;border-radius:4px';
+                    const img = new Image();
+                    img.onload = () => mc.getContext('2d').drawImage(img, 0, 0, 48, 48);
+                    img.src = customData.k;
+                    card.appendChild(mc);
+                } else {
+                    const prev = document.createElement('span');
+                    prev.className = 'preview'; prev.textContent = '✏️';
+                    card.appendChild(prev);
+                }
+                const lbl = document.createElement('span');
+                lbl.className = 'skin-name'; lbl.textContent = sk.name;
+                card.appendChild(lbl);
+                card.addEventListener('click', () => { drawingForCol = col; closeSkins(); openDrawModal(); });
+            } else {
+                const pStyle = isLocked ? '' : (sk.style || '');
+                const pContent = isLocked ? '🔒' : sk.preview;
+                card.innerHTML = `<span class="preview" style="${pStyle}">${pContent}</span><span class="skin-name">${sk.name}</span>`;
+                if (!isLocked) {
+                    card.addEventListener('click', () => {
+                        localStorage.setItem(lsKey, sk.id);
+                        buildGrid('w'); buildGrid('b');
+                    });
+                }
             }
             grid.appendChild(card);
         });
@@ -164,7 +306,7 @@
     }
 
     function openSkins() {
-        buildGrid();
+        buildGrid('w'); buildGrid('b');
         updateSecretUI();
         document.getElementById('skin-modal').classList.add('show');
     }
@@ -174,7 +316,7 @@
         if (val === 'CHESS2011') {
             localStorage.setItem('chess_secret_unlocked', '1');
             updateSecretUI();
-            buildGrid();
+            buildGrid('w'); buildGrid('b');
         } else {
             const inp = document.getElementById('secret-code-input');
             inp.style.borderColor = '#e74c3c';
@@ -193,6 +335,228 @@
     document.getElementById('secret-code-input').addEventListener('keydown', e => {
         if (e.key === 'Enter') tryUnlockSecret();
     });
+
+    // ── Drawing tool ──────────────────────────────────────────────────────────
+    const PALETTE = ['#ffffff','#d0d0d0','#888888','#333333','#000000',
+        '#ff4757','#ff6348','#ffa502','#ffd700','#2ed573','#00e5ff','#1e90ff','#a29bfe','#ff6b81'];
+    const PIECE_LABELS = {k:'Roi',q:'Dame',r:'Tour',b:'Fou',n:'Cav.',p:'Pion'};
+
+    let dTool = 'pencil', dColor = '#ffffff', dBrush = 10;
+    let dDrawing = false, dLast = null;
+    let dData = {k:null,q:null,r:null,b:null,n:null,p:null};
+    let dPiece = 'k';
+    let dCanvas, dCtx;
+
+    function initPalette() {
+        const pal = document.getElementById('color-palette');
+        pal.innerHTML = '';
+        PALETTE.forEach(c => {
+            const sw = document.createElement('div');
+            sw.className = 'cswatch' + (c === dColor ? ' active' : '');
+            sw.style.background = c;
+            if (c === '#ffffff') sw.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.3)';
+            sw.addEventListener('click', () => { dColor = c; highlightSwatch(sw); });
+            pal.appendChild(sw);
+        });
+        const picker = document.createElement('input');
+        picker.type = 'color'; picker.id = 'pick-color'; picker.value = '#ff0000';
+        picker.title = 'Couleur perso';
+        picker.style.cssText = 'width:22px;height:22px;padding:0;border:none;border-radius:4px;cursor:pointer;flex-shrink:0';
+        picker.addEventListener('input', e => {
+            dColor = e.target.value;
+            document.querySelectorAll('.cswatch').forEach(s => s.classList.remove('active'));
+        });
+        pal.appendChild(picker);
+    }
+
+    function highlightSwatch(active) {
+        document.querySelectorAll('.cswatch').forEach(s => s.classList.remove('active'));
+        active.classList.add('active');
+    }
+
+    function setTool(t) {
+        dTool = t;
+        ['pencil','eraser','fill'].forEach(x => {
+            const b = document.getElementById('btn-'+x);
+            if (b) b.classList.toggle('active', x === t);
+        });
+        dCanvas.style.cursor = t === 'fill' ? 'cell' : 'crosshair';
+    }
+
+    function setBrush(s) {
+        dBrush = s;
+        document.querySelectorAll('#size-btns .tbtn').forEach(b => b.classList.remove('active'));
+        const map = {4:'s',10:'m',20:'l'};
+        const b = document.getElementById('bs-'+(map[s]||'m'));
+        if (b) b.classList.add('active');
+    }
+
+    function clearPiece() {
+        dCtx.clearRect(0, 0, dCanvas.width, dCanvas.height);
+        refreshStrip();
+    }
+
+    function getPos(e) {
+        const rect = dCanvas.getBoundingClientRect();
+        const sx = dCanvas.width / rect.width, sy = dCanvas.height / rect.height;
+        const src = e.touches ? e.touches[0] : e;
+        return { x:(src.clientX-rect.left)*sx, y:(src.clientY-rect.top)*sy };
+    }
+
+    function onDStart(e) {
+        e.preventDefault();
+        dDrawing = true;
+        const pos = getPos(e);
+        if (dTool === 'fill') {
+            floodFill(Math.floor(pos.x), Math.floor(pos.y));
+            refreshStrip(); dDrawing = false; return;
+        }
+        dLast = pos; dot(pos);
+    }
+    function onDMove(e) {
+        e.preventDefault();
+        if (!dDrawing) return;
+        const pos = getPos(e);
+        line(dLast, pos); dLast = pos; refreshStrip();
+    }
+    function onDEnd(e) { e.preventDefault(); dDrawing = false; dLast = null; refreshStrip(); }
+
+    function dot(pos) {
+        dCtx.globalCompositeOperation = dTool==='eraser' ? 'destination-out' : 'source-over';
+        dCtx.fillStyle = dColor;
+        dCtx.beginPath();
+        dCtx.arc(pos.x, pos.y, dBrush/2, 0, Math.PI*2);
+        dCtx.fill();
+    }
+    function line(from, to) {
+        dCtx.globalCompositeOperation = dTool==='eraser' ? 'destination-out' : 'source-over';
+        dCtx.strokeStyle = dColor; dCtx.lineWidth = dBrush;
+        dCtx.lineCap = 'round'; dCtx.lineJoin = 'round';
+        dCtx.beginPath(); dCtx.moveTo(from.x, from.y); dCtx.lineTo(to.x, to.y); dCtx.stroke();
+        dot(to);
+    }
+
+    function floodFill(sx, sy) {
+        const w = dCanvas.width, h = dCanvas.height;
+        if (sx<0||sx>=w||sy<0||sy>=h) return;
+        const img = dCtx.getImageData(0,0,w,h), d = img.data;
+        const at = (x,y) => (y*w+x)*4;
+        const si = at(sx,sy);
+        const [sr,sg,sb,sa] = [d[si],d[si+1],d[si+2],d[si+3]];
+        const fr = parseInt(dColor.slice(1,3),16);
+        const fg = parseInt(dColor.slice(3,5),16);
+        const fb = parseInt(dColor.slice(5,7),16);
+        if (sr===fr&&sg===fg&&sb===fb&&sa===255) return;
+        const stack = [sy*w+sx], vis = new Uint8Array(w*h);
+        while (stack.length) {
+            const p = stack.pop(); if (vis[p]) continue;
+            const x=p%w, y=Math.floor(p/w), i=p*4;
+            if (d[i]!==sr||d[i+1]!==sg||d[i+2]!==sb||d[i+3]!==sa) continue;
+            vis[p]=1; d[i]=fr; d[i+1]=fg; d[i+2]=fb; d[i+3]=255;
+            if(x>0) stack.push(p-1); if(x<w-1) stack.push(p+1);
+            if(y>0) stack.push(p-w); if(y<h-1) stack.push(p+w);
+        }
+        dCtx.putImageData(img,0,0);
+    }
+
+    function switchPiece(piece) {
+        dData[dPiece] = dCtx.getImageData(0, 0, dCanvas.width, dCanvas.height);
+        dPiece = piece;
+        dCtx.clearRect(0, 0, dCanvas.width, dCanvas.height);
+        if (dData[piece]) dCtx.putImageData(dData[piece], 0, 0);
+        document.querySelectorAll('.ptab').forEach(t => t.classList.toggle('active', t.dataset.p === piece));
+        refreshStrip();
+    }
+
+    function refreshStrip() {
+        const strip = document.getElementById('draw-preview-strip');
+        strip.innerHTML = '';
+        ['k','q','r','b','n','p'].forEach(p => {
+            const cell = document.createElement('div');
+            cell.className = 'prev-cell' + (p === dPiece ? ' current' : '');
+            const mc = document.createElement('canvas');
+            mc.width = dCanvas.width; mc.height = dCanvas.height;
+            const mCtx = mc.getContext('2d');
+            if (p === dPiece) mCtx.drawImage(dCanvas, 0, 0);
+            else if (dData[p]) mCtx.putImageData(dData[p], 0, 0);
+            const lbl = document.createElement('span');
+            lbl.textContent = PIECE_LABELS[p];
+            cell.appendChild(mc); cell.appendChild(lbl);
+            cell.addEventListener('click', () => switchPiece(p));
+            strip.appendChild(cell);
+        });
+    }
+
+    function openDrawModal() {
+        dPiece = 'k'; dData = {k:null,q:null,r:null,b:null,n:null,p:null};
+        document.getElementById('draw-modal').classList.add('show');
+        dCanvas = document.getElementById('draw-canvas');
+        dCtx = dCanvas.getContext('2d');
+        dCtx.clearRect(0, 0, dCanvas.width, dCanvas.height);
+        dCanvas.addEventListener('mousedown', onDStart);
+        dCanvas.addEventListener('mousemove', onDMove);
+        dCanvas.addEventListener('mouseup', onDEnd);
+        dCanvas.addEventListener('mouseleave', onDEnd);
+        dCanvas.addEventListener('touchstart', onDStart, {passive:false});
+        dCanvas.addEventListener('touchmove', onDMove, {passive:false});
+        dCanvas.addEventListener('touchend', onDEnd, {passive:false});
+        document.querySelectorAll('.ptab').forEach(t => {
+            t.classList.toggle('active', t.dataset.p === 'k');
+            t.addEventListener('click', () => switchPiece(t.dataset.p));
+        });
+        initPalette(); setTool('pencil'); setBrush(10);
+        loadExistingCustom(); refreshStrip();
+    }
+
+    function closeDrawModal() {
+        document.getElementById('draw-modal').classList.remove('show');
+        if (dCanvas) {
+            ['mousedown','mousemove','mouseup','mouseleave'].forEach(ev => dCanvas.removeEventListener(ev, ev==='mousedown'?onDStart:ev==='mousemove'?onDMove:onDEnd));
+            ['touchstart','touchmove','touchend'].forEach(ev => dCanvas.removeEventListener(ev, ev==='touchstart'?onDStart:ev==='touchmove'?onDMove:onDEnd));
+        }
+    }
+
+    function loadExistingCustom() {
+        const customKey = drawingForCol === 'w' ? 'chess_custom_skin_white' : 'chess_custom_skin_black';
+        const raw = localStorage.getItem(customKey);
+        if (!raw) return;
+        try {
+            const data = JSON.parse(raw);
+            let loaded = 0, total = Object.keys(data).length;
+            ['k','q','r','b','n','p'].forEach(p => {
+                if (!data[p]) return;
+                const img = new Image();
+                img.onload = () => {
+                    const tc = document.createElement('canvas');
+                    tc.width = dCanvas.width; tc.height = dCanvas.height;
+                    tc.getContext('2d').drawImage(img, 0, 0, tc.width, tc.height);
+                    dData[p] = tc.getContext('2d').getImageData(0, 0, tc.width, tc.height);
+                    if (p === dPiece) dCtx.putImageData(dData[p], 0, 0);
+                    if (++loaded === total) refreshStrip();
+                };
+                img.src = data[p];
+            });
+        } catch(e) {}
+    }
+
+    function saveCustomSkin() {
+        dData[dPiece] = dCtx.getImageData(0, 0, dCanvas.width, dCanvas.height);
+        const tc = document.createElement('canvas');
+        tc.width = dCanvas.width; tc.height = dCanvas.height;
+        const tCtx = tc.getContext('2d');
+        const skinData = {};
+        ['k','q','r','b','n','p'].forEach(p => {
+            tCtx.clearRect(0, 0, tc.width, tc.height);
+            if (dData[p]) tCtx.putImageData(dData[p], 0, 0);
+            skinData[p] = tc.toDataURL('image/png');
+        });
+        const customKey = drawingForCol === 'w' ? 'chess_custom_skin_white' : 'chess_custom_skin_black';
+        const lsKey = drawingForCol === 'w' ? 'chess_skin_white' : 'chess_skin_black';
+        localStorage.setItem(customKey, JSON.stringify(skinData));
+        localStorage.setItem(lsKey, 'custom');
+        closeDrawModal();
+        buildGrid('w'); buildGrid('b'); openSkins();
+    }
     </script>
 </body>
 </html>

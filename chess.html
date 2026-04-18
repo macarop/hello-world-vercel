@@ -458,6 +458,7 @@ const SKIN_DEFS = {
     royaute:  { syms:{k:'👑',q:'💎',r:'🏰',b:'🔮',n:'🐴',p:'⭐'} },
     nature:   { syms:{k:'🌿',q:'🌸',r:'🪨',b:'🦋',n:'🦊',p:'🍀'} },
     cosmos:   { syms:{k:'🌙',q:'🌟',r:'🛸',b:'☄️',n:'🚀',p:'💫'} },
+    custom:   { custom:true },
 };
 const SKIN_LIST = [
     { id:'classique', name:'Classique', preview:'♛', style:'color:#fff;text-shadow:0 0 3px #000,0 1px 4px rgba(0,0,0,0.9)' },
@@ -469,16 +470,22 @@ const SKIN_LIST = [
     { id:'royaute',  name:'Royauté',  preview:'👑', secret:true },
     { id:'nature',   name:'Nature',    preview:'🌿', secret:true },
     { id:'cosmos',   name:'Cosmos',    preview:'🌙', secret:true },
+    { id:'custom',   name:'Mon dessin', preview:'✏️', custom:true },
 ];
 const EMOJI_LABELS = {k:'Roi',q:'Dame',r:'Tour',b:'Fou',n:'Cav.',p:'Pion'};
 let oppSkinId = null;
 
 function getSkin(col) {
     if (localStorage.getItem('chess_view_classic') === '1') return {};
-    if (!isOnline) return col === 'w' ? (SKIN_DEFS[localStorage.getItem('chess_skin_mine') || 'classique'] || {}) : {};
-    return col === myColor
-        ? (SKIN_DEFS[localStorage.getItem('chess_skin_mine') || 'classique'] || {})
-        : (SKIN_DEFS[oppSkinId] || {});
+    if (!isOnline) {
+        const id = localStorage.getItem(col==='w'?'chess_skin_white':'chess_skin_black') || 'classique';
+        return SKIN_DEFS[id] || {};
+    }
+    if (col === myColor) {
+        const id = localStorage.getItem(col==='w'?'chess_skin_white':'chess_skin_black') || 'classique';
+        return SKIN_DEFS[id] || {};
+    }
+    return SKIN_DEFS[oppSkinId] || {};
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -715,23 +722,37 @@ function render() {
             if(board[r][c]){
                 const p=board[r][c];
                 const skin=getSkin(p.col);
-                const s=document.createElement('span');
-                if(skin.syms){
-                    s.className='piece-emoji';
-                    s.innerHTML=`<span>${skin.syms[p.t]}</span><span class="piece-emoji-lbl">${EMOJI_LABELS[p.t]}</span>`;
-                }else{
-                    s.textContent=SYM[p.t];
-                    if(skin.color){
-                        s.style.color=skin.color;
-                        s.style.textShadow=skin.shadow;
-                    }else{
+                if(skin.custom){
+                    const isOpp = isOnline && p.col!==myColor;
+                    const lsKey = isOpp
+                        ? (p.col==='w'?'chess_opp_custom_skin_w':'chess_opp_custom_skin_b')
+                        : (p.col==='w'?'chess_custom_skin_white':'chess_custom_skin_black');
+                    let cd = {}; try { cd=JSON.parse(localStorage.getItem(lsKey)||'{}'); } catch(e){}
+                    const src = cd[p.t];
+                    if(src){
+                        const img=document.createElement('img');
+                        img.src=src;
+                        img.style.cssText='width:80%;height:80%;object-fit:contain;pointer-events:none';
+                        sq.appendChild(img);
+                    } else {
+                        const s=document.createElement('span');
+                        s.textContent=SYM[p.t];
                         s.style.color=p.col==='w'?'#fff':'#111';
-                        s.style.textShadow=p.col==='w'
-                            ?'0 0 3px #000,0 1px 4px rgba(0,0,0,0.9)'
-                            :'0 0 2px rgba(255,255,255,0.3)';
+                        s.style.textShadow=p.col==='w'?'0 0 3px #000,0 1px 4px rgba(0,0,0,0.9)':'0 0 2px rgba(255,255,255,0.3)';
+                        sq.appendChild(s);
                     }
+                } else {
+                    const s=document.createElement('span');
+                    if(skin.syms){
+                        s.className='piece-emoji';
+                        s.innerHTML=`<span>${skin.syms[p.t]}</span><span class="piece-emoji-lbl">${EMOJI_LABELS[p.t]}</span>`;
+                    }else{
+                        s.textContent=SYM[p.t];
+                        if(skin.color){ s.style.color=skin.color; s.style.textShadow=skin.shadow; }
+                        else{ s.style.color=p.col==='w'?'#fff':'#111'; s.style.textShadow=p.col==='w'?'0 0 3px #000,0 1px 4px rgba(0,0,0,0.9)':'0 0 2px rgba(255,255,255,0.3)'; }
+                    }
+                    sq.appendChild(s);
                 }
-                sq.appendChild(s);
             }
             sq.addEventListener('click',()=>onClick(r,c));
             el.appendChild(sq);
@@ -764,7 +785,14 @@ function launchGame(hostColor) {
     initBoard(); showGame();
     opponentQuitReceived=false;
     setConnInfo('<span class="dot dot-on"></span>Adversaire connecté');
-    if (conn) conn.send({type:'skin_sync', skin: localStorage.getItem('chess_skin_mine') || 'classique'});
+    if (conn) {
+        const skinW = localStorage.getItem('chess_skin_white') || 'classique';
+        const skinB = localStorage.getItem('chess_skin_black') || 'classique';
+        const msg = {type:'skin_sync', skinW, skinB};
+        if (skinW==='custom') { try { msg.customW=JSON.parse(localStorage.getItem('chess_custom_skin_white')||'{}'); } catch(e){} }
+        if (skinB==='custom') { try { msg.customB=JSON.parse(localStorage.getItem('chess_custom_skin_black')||'{}'); } catch(e){} }
+        conn.send(msg);
+    }
     render();
 }
 
@@ -983,7 +1011,12 @@ function handleNetData(data) {
         board=Array(8).fill(null).map(()=>Array(8).fill(null));
         selected=null; validMoves=[]; statusMsg=''; render();
     } else if (data.type==='skin_sync') {
-        oppSkinId=data.skin; render();
+        // Store opponent's skin choices keyed by the color they play (opposite of myColor)
+        const oppCol = myColor==='w'?'b':'w';
+        oppSkinId = oppCol==='w' ? (data.skinW||'classique') : (data.skinB||'classique');
+        if (data.customW) localStorage.setItem('chess_opp_custom_skin_w', JSON.stringify(data.customW));
+        if (data.customB) localStorage.setItem('chess_opp_custom_skin_b', JSON.stringify(data.customB));
+        render();
     }
 }
 
@@ -1163,7 +1196,7 @@ document.addEventListener('keydown', e => {
 // ── In-game skin panel ────────────────────────────────────────────────────────
 function buildSkinPanel() {
     const grid = document.getElementById('sp-grid');
-    const current = localStorage.getItem('chess_skin_mine') || 'classique';
+    const current = localStorage.getItem(myColor==='w'?'chess_skin_white':'chess_skin_black') || 'classique';
     const unlocked = localStorage.getItem('chess_secret_unlocked') === '1';
     grid.innerHTML = '';
     SKIN_LIST.forEach(sk => {
@@ -1173,8 +1206,16 @@ function buildSkinPanel() {
         const pStyle = sk.style || '';
         card.innerHTML = `<span class="sp-preview" style="${pStyle}">${sk.preview}</span><span class="sp-name">${sk.name}</span>`;
         card.addEventListener('click', () => {
-            localStorage.setItem('chess_skin_mine', sk.id);
-            if (isOnline && conn) conn.send({type:'skin_sync', skin: sk.id});
+            const lsKey = myColor==='w'?'chess_skin_white':'chess_skin_black';
+            localStorage.setItem(lsKey, sk.id);
+            if (isOnline && conn) {
+                const skinW = localStorage.getItem('chess_skin_white') || 'classique';
+                const skinB = localStorage.getItem('chess_skin_black') || 'classique';
+                const msg = {type:'skin_sync', skinW, skinB};
+                if (skinW==='custom') { try { msg.customW=JSON.parse(localStorage.getItem('chess_custom_skin_white')||'{}'); } catch(e){} }
+                if (skinB==='custom') { try { msg.customB=JSON.parse(localStorage.getItem('chess_custom_skin_black')||'{}'); } catch(e){} }
+                conn.send(msg);
+            }
             buildSkinPanel(); render();
         });
         grid.appendChild(card);
