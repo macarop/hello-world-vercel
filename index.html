@@ -31,33 +31,63 @@
         #skin-box {
             background: #1a1a2e;
             border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 20px; padding: 2rem 1.5rem;
-            max-width: 420px; width: 90%;
-            display: flex; flex-direction: column; gap: 1.2rem;
+            border-radius: 20px; padding: 1.4rem 1.2rem;
+            max-width: 500px; width: 92%;
+            display: flex; flex-direction: column; gap: 0.9rem;
             color: #eee; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-height: 92vh; overflow-y: auto;
         }
-        #skin-box h2 { font-size: 1.3rem; text-align: center; }
-        #skin-box p  { font-size: 0.85rem; opacity: 0.55; text-align: center; }
-        #skin-grid {
+        #skin-box h2 { font-size: 1.2rem; text-align: center; }
+        #skin-box > p { font-size: 0.82rem; opacity: 0.5; text-align: center; }
+        #skin-columns { display: flex; gap: 0.7rem; }
+        .skin-col { flex: 1; display: flex; flex-direction: column; gap: 0.45rem; min-width: 0; }
+        .skin-col-header {
+            font-size: 0.85rem; font-weight: 700; text-align: center;
+            opacity: 0.7; padding-bottom: 0.35rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .skin-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 0.7rem;
+            gap: 0.35rem;
         }
         .skin-card {
             background: rgba(255,255,255,0.06);
             border: 2px solid rgba(255,255,255,0.1);
-            border-radius: 12px; padding: 1rem 0.5rem;
+            border-radius: 10px; padding: 0.55rem 0.2rem;
             text-align: center; cursor: pointer;
             transition: background 0.15s, border-color 0.15s;
-            display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+            display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
         }
         .skin-card:hover { background: rgba(255,255,255,0.12); }
         .skin-card.selected { border-color: #ffd700; background: rgba(255,215,0,0.1); }
-        .skin-card .preview { font-size: 2.4rem; line-height: 1; }
-        .skin-card .skin-name { font-size: 0.8rem; font-weight: 600; opacity: 0.85; }
+        .skin-card.locked { opacity: 0.35; cursor: default; }
+        .skin-card.locked:hover { background: rgba(255,255,255,0.06); }
+        .skin-card .preview { font-size: 1.7rem; line-height: 1; }
+        .skin-card .skin-name { font-size: 0.68rem; font-weight: 600; opacity: 0.85; }
+        #secret-section {
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding-top: 0.7rem;
+        }
+        .secret-hint { font-size: 0.79rem; opacity: 0.55; text-align: center; margin-bottom: 0.45rem; }
+        .secret-row { display: flex; gap: 0.45rem; }
+        .secret-row input {
+            flex: 1; padding: 0.4rem 0.65rem;
+            border-radius: 7px; border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.08); color: #fff;
+            font-size: 0.88rem; letter-spacing: 0.08em;
+        }
+        .secret-row button {
+            padding: 0.4rem 0.85rem;
+            background: rgba(255,255,255,0.12); color: #fff;
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 7px;
+            cursor: pointer; font-weight: 600; font-size: 0.88rem;
+        }
+        .secret-row button:hover { background: rgba(255,255,255,0.22); }
+        #secret-unlocked-msg { font-size: 0.82rem; color: #ffd700; text-align: center; }
         .skin-close {
-            padding: 0.55rem 1.4rem; border: none; border-radius: 8px;
-            background: #444; color: #fff; cursor: pointer; font-size: 0.9rem;
+            padding: 0.5rem 1.3rem; border: none; border-radius: 8px;
+            background: #444; color: #fff; cursor: pointer; font-size: 0.88rem;
             font-weight: 600; align-self: center;
         }
         .skin-close:hover { background: #333; }
@@ -77,58 +107,122 @@
     <div id="skin-modal">
         <div id="skin-box">
             <h2>🎨 Mes pièces</h2>
-            <p>Choisir l'apparence de tes pièces (visible uniquement pour toi)</p>
-            <div id="skin-grid"></div>
+            <p>Choisis l'apparence de chaque camp</p>
+            <div id="skin-columns">
+                <div class="skin-col">
+                    <div class="skin-col-header">♙ Blancs</div>
+                    <div class="skin-grid" id="grid-white"></div>
+                </div>
+                <div class="skin-col">
+                    <div class="skin-col-header">♟ Noirs</div>
+                    <div class="skin-grid" id="grid-black"></div>
+                </div>
+            </div>
+            <div id="secret-section">
+                <div id="secret-locked-ui">
+                    <p class="secret-hint">🔒 Skins secrets — entre le code pour les débloquer</p>
+                    <div class="secret-row">
+                        <input type="text" id="secret-code-input" placeholder="Code secret" maxlength="20">
+                        <button onclick="tryUnlockSecret()">OK</button>
+                    </div>
+                </div>
+                <div id="secret-unlocked-ui" style="display:none">
+                    <p id="secret-unlocked-msg">✨ Skins secrets débloqués !</p>
+                </div>
+            </div>
             <button class="skin-close" onclick="closeSkins()">Fermer</button>
         </div>
     </div>
 
     <script>
     const SKINS = [
-        { id:'classique', name:'Classique',  piece:'♛', color:'#fff',    shadow:'0 0 3px #000,0 1px 4px rgba(0,0,0,0.9)' },
-        { id:'or',        name:'Doré',       piece:'♛', color:'#ffd700', shadow:'0 0 10px rgba(255,215,0,0.9),0 1px 3px #000' },
-        { id:'cristal',   name:'Cristal',    piece:'♛', color:'#00e5ff', shadow:'0 0 10px rgba(0,229,255,0.9),0 1px 3px #000' },
-        { id:'rubis',     name:'Rubis',      piece:'♛', color:'#ff4757', shadow:'0 0 10px rgba(255,71,87,0.9),0 1px 3px #000' },
-        { id:'emeraude',  name:'Émeraude',   piece:'♛', color:'#2ed573', shadow:'0 0 10px rgba(46,213,115,0.9),0 1px 3px #000' },
-        { id:'violet',    name:'Violet',     piece:'♛', color:'#a29bfe', shadow:'0 0 10px rgba(162,155,254,0.9),0 1px 3px #000' },
+        { id:'classique', name:'Classique',
+          styleW:'color:#fff;text-shadow:0 0 3px #000,0 1px 4px rgba(0,0,0,0.9)',
+          styleB:'color:#555;text-shadow:0 0 1px rgba(255,255,255,0.5)', piece:'♛', secret:false },
+        { id:'or',       name:'Doré',
+          style:'color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,0.9),0 1px 3px #000', piece:'♛', secret:false },
+        { id:'cristal',  name:'Cristal',
+          style:'color:#00e5ff;text-shadow:0 0 10px rgba(0,229,255,0.9),0 1px 3px #000', piece:'♛', secret:false },
+        { id:'rubis',    name:'Rubis',
+          style:'color:#ff4757;text-shadow:0 0 10px rgba(255,71,87,0.9),0 1px 3px #000', piece:'♛', secret:false },
+        { id:'emeraude', name:'Émeraude',
+          style:'color:#2ed573;text-shadow:0 0 10px rgba(46,213,115,0.9),0 1px 3px #000', piece:'♛', secret:false },
+        { id:'violet',   name:'Violet',
+          style:'color:#a29bfe;text-shadow:0 0 10px rgba(162,155,254,0.9),0 1px 3px #000', piece:'♛', secret:false },
+        { id:'royaute',  name:'Royauté',  emoji:'👑', secret:true },
+        { id:'nature',   name:'Nature',   emoji:'🌲', secret:true },
+        { id:'cosmos',   name:'Cosmos',   emoji:'🌙', secret:true },
     ];
 
-    function getCurrentSkin() {
-        return localStorage.getItem('chess_skin') || 'classique';
+    function isUnlocked() {
+        return localStorage.getItem('chess_secret_unlocked') === '1';
     }
 
-    function buildGrid() {
-        const current = getCurrentSkin();
-        const grid = document.getElementById('skin-grid');
+    function buildGrid(col) {
+        const grid = document.getElementById(col === 'w' ? 'grid-white' : 'grid-black');
+        const lsKey = col === 'w' ? 'chess_skin_white' : 'chess_skin_black';
+        const selected = localStorage.getItem(lsKey) || 'classique';
+        const unlocked = isUnlocked();
         grid.innerHTML = '';
         SKINS.forEach(sk => {
             const card = document.createElement('div');
-            card.className = 'skin-card' + (sk.id === current ? ' selected' : '');
-            card.innerHTML = `
-                <span class="preview" style="color:${sk.color};text-shadow:${sk.shadow}">${sk.piece}</span>
-                <span class="skin-name">${sk.name}</span>
-            `;
-            card.addEventListener('click', () => {
-                localStorage.setItem('chess_skin', sk.id);
-                document.querySelectorAll('.skin-card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-            });
+            const isLocked = sk.secret && !unlocked;
+            card.className = 'skin-card' + (sk.id === selected ? ' selected' : '') + (isLocked ? ' locked' : '');
+            let pStyle = '', pContent = '';
+            if (isLocked) {
+                pContent = '🔒';
+            } else if (sk.emoji) {
+                pContent = sk.emoji;
+            } else {
+                pStyle = col === 'w' ? (sk.styleW || sk.style) : (sk.styleB || sk.style);
+                pContent = sk.piece;
+            }
+            card.innerHTML = `<span class="preview" style="${pStyle}">${pContent}</span><span class="skin-name">${sk.name}</span>`;
+            if (!isLocked) {
+                card.addEventListener('click', () => {
+                    localStorage.setItem(lsKey, sk.id);
+                    buildGrid('w'); buildGrid('b');
+                });
+            }
             grid.appendChild(card);
         });
     }
 
+    function updateSecretUI() {
+        const unlocked = isUnlocked();
+        document.getElementById('secret-locked-ui').style.display = unlocked ? 'none' : '';
+        document.getElementById('secret-unlocked-ui').style.display = unlocked ? '' : 'none';
+    }
+
     function openSkins() {
-        buildGrid();
+        buildGrid('w'); buildGrid('b');
+        updateSecretUI();
         document.getElementById('skin-modal').classList.add('show');
+    }
+
+    function tryUnlockSecret() {
+        const val = document.getElementById('secret-code-input').value.trim().toUpperCase();
+        if (val === 'CHESS2011') {
+            localStorage.setItem('chess_secret_unlocked', '1');
+            updateSecretUI();
+            buildGrid('w'); buildGrid('b');
+        } else {
+            const inp = document.getElementById('secret-code-input');
+            inp.style.borderColor = '#e74c3c';
+            setTimeout(() => { inp.style.borderColor = ''; }, 700);
+        }
     }
 
     function closeSkins() {
         document.getElementById('skin-modal').classList.remove('show');
     }
 
-    // Close on backdrop click
     document.getElementById('skin-modal').addEventListener('click', e => {
         if (e.target === document.getElementById('skin-modal')) closeSkins();
+    });
+
+    document.getElementById('secret-code-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') tryUnlockSecret();
     });
     </script>
 </body>
