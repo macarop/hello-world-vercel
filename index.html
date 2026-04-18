@@ -234,6 +234,18 @@
             <h2>👤 Mon compte</h2>
 
             <div class="acc-section">
+                <h3>🔑 Mon code personnel</h3>
+                <p>Choisis un code mémorable (comme un mot de passe). Il sera inclus dans ton export pour te reconnaître facilement.</p>
+                <div class="acc-row">
+                    <input type="text" id="acc-personal-code" placeholder="Ex: maxence2011"
+                        maxlength="30"
+                        style="flex:1;padding:0.45rem 0.7rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:#fff;font-size:0.9rem">
+                    <button onclick="savePersonalCode()">Sauvegarder</button>
+                </div>
+                <div class="acc-msg" id="acc-code-save-msg"></div>
+            </div>
+
+            <div class="acc-section">
                 <h3>📋 Exporter mon compte</h3>
                 <p>Génère un code pour restaurer tes réglages sur un autre appareil.</p>
                 <div class="acc-row">
@@ -248,7 +260,7 @@
 
             <div class="acc-section">
                 <h3>📥 Importer un compte</h3>
-                <p>Colle un code pour restaurer pseudo et skins sur cet appareil.</p>
+                <p>Colle ton code (ou juste ton code personnel si déjà utilisé ici) pour restaurer ton compte.</p>
                 <textarea id="acc-import-in" placeholder="Colle ton code ici…"></textarea>
                 <div class="acc-row">
                     <button class="btn-primary" onclick="importAccount()">Restaurer</button>
@@ -436,7 +448,10 @@
         document.getElementById('acc-copy-row').style.display = 'none';
         document.getElementById('acc-export-msg').textContent = '';
         document.getElementById('acc-import-msg').textContent = '';
+        document.getElementById('acc-code-save-msg').textContent = '';
         document.getElementById('acc-import-in').value = '';
+        // Pre-fill personal code if already set
+        document.getElementById('acc-personal-code').value = localStorage.getItem('chess_account_code') || '';
         document.getElementById('account-modal').classList.add('show');
     }
     function closeAccount() {
@@ -446,22 +461,47 @@
         if (e.target === document.getElementById('account-modal')) closeAccount();
     });
 
-    function exportAccount() {
-        const data = {
-            v: 2,
-            pseudo:  localStorage.getItem('chess_pseudo')           || '',
-            skinW:   localStorage.getItem('chess_skin_white')       || 'classique',
-            skinB:   localStorage.getItem('chess_skin_black')       || 'classique',
-            secret:  localStorage.getItem('chess_secret_unlocked')  === '1',
-        };
-        const code = btoa(unescape(encodeURIComponent(JSON.stringify(data))))
+    function savePersonalCode() {
+        const val = document.getElementById('acc-personal-code').value.trim();
+        const msg = document.getElementById('acc-code-save-msg');
+        if (!val) { msg.textContent = 'Entre un code.'; msg.className = 'acc-msg err'; return; }
+        localStorage.setItem('chess_account_code', val);
+        msg.textContent = `✓ Code "${val}" sauvegardé !`;
+        msg.className = 'acc-msg ok';
+    }
+
+    function encodeData(data) {
+        return btoa(unescape(encodeURIComponent(JSON.stringify(data))))
             .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+    }
+
+    function decodeData(str) {
+        const padded = str.replace(/-/g,'+').replace(/_/g,'/');
+        const pad = (4 - padded.length % 4) % 4;
+        return JSON.parse(decodeURIComponent(escape(atob(padded + '='.repeat(pad)))));
+    }
+
+    function exportAccount() {
+        const personalCode = localStorage.getItem('chess_account_code') || '';
+        const data = {
+            v: 3,
+            pseudo:  localStorage.getItem('chess_pseudo')          || '',
+            skinW:   localStorage.getItem('chess_skin_white')      || 'classique',
+            skinB:   localStorage.getItem('chess_skin_black')      || 'classique',
+            secret:  localStorage.getItem('chess_secret_unlocked') === '1',
+            wins:    parseInt(localStorage.getItem('chess_wins')   || '0'),
+            code:    personalCode,
+        };
+        const b64 = encodeData(data);
+        const full = personalCode ? `${personalCode}::${b64}` : b64;
         const out = document.getElementById('acc-code-out');
-        out.textContent = code;
+        out.textContent = full;
         out.style.display = '';
         document.getElementById('acc-copy-row').style.display = '';
         const msg = document.getElementById('acc-export-msg');
-        msg.textContent = 'Code généré — copie-le et garde-le précieusement.';
+        msg.textContent = personalCode
+            ? `Code généré avec ton code personnel "${personalCode}" — copie-le.`
+            : 'Code généré. Définis un code personnel pour le rendre mémorable.';
         msg.className = 'acc-msg ok';
     }
 
@@ -475,26 +515,35 @@
     }
 
     function importAccount() {
-        const raw = document.getElementById('acc-import-in').value.trim();
+        let raw = document.getElementById('acc-import-in').value.trim();
         const msg = document.getElementById('acc-import-msg');
         if (!raw) { msg.textContent = 'Colle un code valide.'; msg.className='acc-msg err'; return; }
         try {
-            const padded = raw.replace(/-/g,'+').replace(/_/g,'/');
-            const pad = (4 - padded.length % 4) % 4;
-            const json = decodeURIComponent(escape(atob(padded + '='.repeat(pad))));
-            const data = JSON.parse(json);
+            // Support format: "mycode::base64" or plain base64
+            let b64 = raw;
+            if (raw.includes('::')) {
+                const parts = raw.split('::');
+                b64 = parts[1];
+            }
+            const data = decodeData(b64);
             if (!data.v) throw new Error('invalid');
-            if (data.pseudo)  localStorage.setItem('chess_pseudo',          data.pseudo);
-            if (data.skinW)   localStorage.setItem('chess_skin_white',      data.skinW);
-            if (data.skinB)   localStorage.setItem('chess_skin_black',      data.skinB);
-            if (data.secret)  localStorage.setItem('chess_secret_unlocked', '1');
-            msg.textContent = `✓ Compte restauré${data.pseudo ? ' pour ' + data.pseudo : ''} !`;
+            if (data.pseudo) localStorage.setItem('chess_pseudo',          data.pseudo);
+            if (data.skinW)  localStorage.setItem('chess_skin_white',      data.skinW);
+            if (data.skinB)  localStorage.setItem('chess_skin_black',      data.skinB);
+            if (data.secret) localStorage.setItem('chess_secret_unlocked', '1');
+            if (data.wins)   localStorage.setItem('chess_wins',            String(data.wins));
+            if (data.code)   localStorage.setItem('chess_account_code',    data.code);
+            msg.textContent = `✓ Compte restauré${data.pseudo ? ' pour ' + data.pseudo : ''}${data.wins ? ' · 🏆' + data.wins + ' victoire(s)' : ''} !`;
             msg.className = 'acc-msg ok';
         } catch(e) {
             msg.textContent = '✗ Code invalide ou corrompu.';
             msg.className = 'acc-msg err';
         }
     }
+
+    document.getElementById('acc-personal-code').addEventListener('keydown', e => {
+        if (e.key === 'Enter') savePersonalCode();
+    });
 
     // ── Drawing tool ──────────────────────────────────────────────────────────
     const PALETTE = ['#ffffff','#d0d0d0','#888888','#333333','#000000',

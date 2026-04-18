@@ -99,9 +99,11 @@
             padding: 0.3rem 0.75rem; border-radius: 20px;
             background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1);
         }
-        .chip-name { font-weight: 600; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .chip-name { font-weight: 600; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .chip-edit { background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.4); font-size: 0.8rem; padding: 0; transition: color 0.15s; }
         .chip-edit:hover { color: #fff; }
+        .chip-wins { font-size: 0.72rem; color: #ffd700; font-weight: 700; opacity: 0.9; }
+        .chip-admin { font-size: 0.75rem; color: #ffd700; font-weight: 700; letter-spacing: 0; }
         .vs { opacity: 0.45; font-size: 0.85rem; }
         #status { min-height: 1.4rem; font-size: 1rem; color: #ffd700; font-weight: bold; margin-bottom: 0.15rem; }
         #turn   { font-size: 0.88rem; opacity: 0.65; margin-bottom: 0.65rem; }
@@ -661,12 +663,15 @@ function doMove(fr, fc, m, fromNet=false) {
 }
 
 function showGameOver() {
-    const isMat = statusMsg.includes('mat');
     const isPat = statusMsg.includes('Pat');
     document.getElementById('gameover-trophy').textContent = isPat ? '🤝' : '🏆';
     document.getElementById('gameover-msg').textContent = statusMsg;
     if (isOnline) {
         const iWon = (turn==='b'&&myColor==='w') || (turn==='w'&&myColor==='b');
+        if (!isPat && iWon) {
+            const wins = parseInt(localStorage.getItem('chess_wins')||'0') + 1;
+            localStorage.setItem('chess_wins', wins);
+        }
         document.getElementById('gameover-sub').textContent = isPat ? 'Égalité !' : iWon ? 'Bien joué !' : 'Bonne chance la prochaine fois.';
     } else {
         document.getElementById('gameover-sub').textContent = isPat ? 'Partie nulle.' : '';
@@ -690,13 +695,26 @@ function updatePlayersBar() {
     const bar = document.getElementById('players-bar');
     if (!isOnline) { bar.style.display='none'; return; }
     bar.style.display='';
-    const wName=myColor==='w'?myPseudo:oppPseudo;
-    const bName=myColor==='b'?myPseudo:oppPseudo;
-    document.getElementById('name-w').textContent=wName||'—';
-    document.getElementById('name-b').textContent=bName||'—';
+    document.getElementById('name-w').textContent=(myColor==='w'?myPseudo:oppPseudo)||'—';
+    document.getElementById('name-b').textContent=(myColor==='b'?myPseudo:oppPseudo)||'—';
+    // remove stale badges then rebuild
+    ['chip-w','chip-b'].forEach(id => {
+        document.getElementById(id).querySelectorAll('.chip-wins,.chip-admin').forEach(el=>el.remove());
+    });
+    const myChip = document.getElementById(myColor==='w'?'chip-w':'chip-b');
+    const wins = parseInt(localStorage.getItem('chess_wins')||'0');
+    if (wins > 0) {
+        const wb = document.createElement('span');
+        wb.className='chip-wins'; wb.textContent=`🏆${wins}`;
+        myChip.appendChild(wb);
+    }
+    if (adminMode) {
+        const ab = document.createElement('span');
+        ab.className='chip-admin'; ab.textContent='👑ADMIN';
+        myChip.appendChild(ab);
+    }
     document.getElementById('edit-btn').style.display='';
-    const targetChip=myColor==='w'?document.getElementById('chip-w'):document.getElementById('chip-b');
-    targetChip.appendChild(document.getElementById('edit-btn'));
+    myChip.appendChild(document.getElementById('edit-btn'));
 }
 
 function render() {
@@ -1177,6 +1195,7 @@ function activateAdmin() {
     adminMode = true;
     document.getElementById('admin-panel').classList.add('show');
     buildPalette();
+    updatePlayersBar();
     // Brief flash notification
     const old = document.getElementById('status').textContent;
     document.getElementById('status').textContent = '👑 Mode Admin activé !';
