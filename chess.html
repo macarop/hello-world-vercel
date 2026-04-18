@@ -247,6 +247,7 @@ const SYM = { k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' };
 let board, turn, selected, validMoves, ep, cr, gameOver, statusMsg;
 let peer, conn, myColor, isOnline = false;
 let myPseudo = '', oppPseudo = '';
+let opponentQuitReceived = false;
 
 // ── Chess logic ───────────────────────────────────────────────────────────────
 const ib = (r, c) => r >= 0 && r < 8 && c >= 0 && c < 8;
@@ -475,8 +476,12 @@ function closeQuitOverlay() {
 }
 function doQuit() {
     closeQuitOverlay();
-    if (isOnline && conn) conn.send({type:'quit', pseudo:myPseudo});
-    backToLobby();
+    if (isOnline && conn) {
+        conn.send({type:'quit', pseudo:myPseudo});
+        setTimeout(backToLobby, 500); // laisser le temps au message d'arriver
+    } else {
+        backToLobby();
+    }
 }
 function showOpponentQuit(pseudo) {
     document.getElementById('quit-title').textContent = `${pseudo || 'L\'adversaire'} a quitté`;
@@ -533,6 +538,7 @@ function handleNetData(data) {
     } else if (data.type==='pseudo') {
         oppPseudo=data.pseudo; render();
     } else if (data.type==='quit') {
+        opponentQuitReceived=true;
         showOpponentQuit(data.pseudo);
         gameOver=true; render();
     } else if (data.type==='hello') {
@@ -543,11 +549,18 @@ function handleNetData(data) {
 function attachConn(c) {
     conn=c;
     conn.on('data', handleNetData);
-    conn.on('close', ()=>{ setConnInfo('<span class="dot dot-off"></span>Adversaire déconnecté'); });
+    conn.on('close', ()=>{
+        if (!opponentQuitReceived && document.getElementById('game').style.display!=='none') {
+            opponentQuitReceived=true;
+            showOpponentQuit(oppPseudo);
+            gameOver=true; render();
+        }
+    });
     conn.on('error', ()=>{ setConnInfo('<span class="dot dot-off"></span>Erreur de connexion'); });
 }
 
 function startOnlineGame() {
+    opponentQuitReceived=false;
     initBoard(); showGame();
     setConnInfo('<span class="dot dot-on"></span>Adversaire connecté');
     conn.send({type:'hello', pseudo:myPseudo});
