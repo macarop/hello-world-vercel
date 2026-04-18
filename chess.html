@@ -194,6 +194,18 @@
         .btn-gold { background: rgba(255,215,0,0.15); color: #ffd700; border: 1px solid rgba(255,215,0,0.4); border-radius: 8px; }
         .btn-gold:hover { background: rgba(255,215,0,0.28); }
         .btn-gold.on { background: #ffd700; color: #1a1a2e; border-color: #ffd700; }
+
+        /* ── Admin trigger ── */
+        #admin-trigger {
+            position: fixed; left: 0.8rem; top: 50%; transform: translateY(-50%);
+            background: rgba(255,215,0,0.07); border: 1px solid rgba(255,215,0,0.18);
+            border-radius: 50%; width: 38px; height: 38px;
+            cursor: pointer; font-size: 1.1rem; color: rgba(255,215,0,0.35);
+            display: none; align-items: center; justify-content: center;
+            transition: all 0.2s; z-index: 50; padding: 0;
+        }
+        #admin-trigger:hover { background: rgba(255,215,0,0.22); color: #ffd700; border-color: rgba(255,215,0,0.55); }
+        #admin-trigger.visible { display: flex; }
     </style>
 </head>
 <body>
@@ -309,6 +321,9 @@
         </div>
     </div>
 </div>
+
+<!-- ── ADMIN TRIGGER ── -->
+<button id="admin-trigger" onclick="promptAdminCode()" title="Mode Admin">👑</button>
 
 <!-- ── QUIT OVERLAY ── -->
 <div id="quit-overlay">
@@ -647,12 +662,15 @@ function showLobby() {
     document.getElementById('lobby').style.display='flex';
     document.getElementById('setup').style.display='none';
     document.getElementById('game').style.display='none';
+    document.getElementById('quit-overlay').classList.remove('show');
+    document.getElementById('admin-trigger').classList.remove('visible');
     document.getElementById('pseudo-input').value=myPseudo;
 }
 function showGame() {
     document.getElementById('lobby').style.display='none';
     document.getElementById('setup').style.display='none';
     document.getElementById('game').style.display='flex';
+    document.getElementById('admin-trigger').classList.add('visible');
 }
 function setLobbyStatus(msg) { document.getElementById('lobby-status').textContent=msg; }
 function setConnInfo(html)   { document.getElementById('conn-info').innerHTML=html; }
@@ -836,6 +854,13 @@ function adminResetBoard() {
 function adminClearBoard() {
     board = Array(8).fill(null).map(() => Array(8).fill(null));
     selected=null; validMoves=[]; statusMsg=''; render();
+}
+
+function promptAdminCode() {
+    const input = prompt('Code admin :');
+    if (input === null) return;
+    if (input === 'madmaxouLeRoi') activateAdmin();
+    else alert('Code incorrect.');
 }
 
 function activateAdmin() {
