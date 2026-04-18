@@ -223,6 +223,19 @@
         }
         #admin-trigger:hover { background: rgba(255,215,0,0.22); color: #ffd700; border-color: rgba(255,215,0,0.55); }
         #admin-trigger.visible { display: flex; }
+
+        /* ── Matchmaking ── */
+        .mm-searching {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 0.8rem; padding: 0.4rem 0;
+        }
+        .mm-spinner {
+            width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: #3498db; border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .mm-searching p { font-size: 0.88rem; opacity: 0.65; text-align: center; }
     </style>
 </head>
 <body>
@@ -248,6 +261,18 @@
         <h2>Rejoindre une partie</h2>
         <input type="text" id="code-input" class="code-input" placeholder="Code à 6 caractères" maxlength="6">
         <button class="btn-blue" onclick="joinGame()">Rejoindre</button>
+    </div>
+    <div class="card" id="mm-card">
+        <h2>Jouer contre un inconnu</h2>
+        <small>Mis en relation automatiquement avec un joueur en ligne.</small>
+        <div id="mm-idle">
+            <button class="btn-blue" style="width:100%" onclick="startMatchmaking()">🔍 Trouver un adversaire</button>
+        </div>
+        <div id="mm-searching" class="mm-searching" style="display:none">
+            <div class="mm-spinner"></div>
+            <p id="mm-status">Recherche d'un adversaire…</p>
+            <button class="btn-gray" onclick="cancelMatchmaking()">Annuler</button>
+        </div>
     </div>
     <div class="card">
         <button class="btn-gray" style="width:100%;justify-content:center" onclick="startLocal()">Jouer en local (même écran)</button>
@@ -758,10 +783,92 @@ function startLocal() {
 }
 
 function backToLobby() {
+    clearTimeout(mmTimeout);
     if (peer) { peer.destroy(); peer=null; }
     conn=null; isOnline=false; oppPseudo=''; amHost=false;
     document.getElementById('code-display').style.display='none';
+    showMMSearching(false);
     setLobbyStatus(''); showLobby();
+}
+
+// ── Matchmaking ───────────────────────────────────────────────────────────────
+let mmTimeout = null;
+
+function mmSlot() {
+    // Slot de 2 minutes : deux joueurs qui cherchent dans la même fenêtre se trouvent
+    return 'chess-mm-v1-' + Math.floor(Date.now() / 120000);
+}
+
+function setMMStatus(msg) {
+    document.getElementById('mm-status').textContent = msg;
+}
+
+function showMMSearching(visible) {
+    document.getElementById('mm-idle').style.display = visible ? 'none' : '';
+    document.getElementById('mm-searching').style.display = visible ? '' : 'none';
+}
+
+function startMatchmaking() {
+    myPseudo = document.getElementById('pseudo-input').value.trim() || 'Joueur';
+    savePseudo(myPseudo);
+    showMMSearching(true);
+    setMMStatus('Connexion…');
+    tryClaimSlot(mmSlot());
+}
+
+function tryClaimSlot(slot) {
+    if (peer) peer.destroy();
+    peer = new Peer(slot);
+    peer.on('open', () => {
+        // On est l'hôte : on attend quelqu'un
+        amHost = true;
+        setMMStatus('En attente d\'un adversaire…');
+        mmTimeout = setTimeout(() => {
+            // Personne dans ce slot, essayer le suivant
+            setMMStatus('Toujours en recherche…');
+            peer.destroy();
+            tryClaimSlot('chess-mm-v1-' + (Math.floor(Date.now() / 120000) + 1));
+        }, 90000);
+        peer.on('connection', c => {
+            clearTimeout(mmTimeout);
+            showMMSearching(false);
+            attachConn(c);
+            c.on('open', () => { isOnline = true; startSetupPhase(); });
+        });
+    });
+    peer.on('error', err => {
+        if (err.type === 'unavailable-id') {
+            // Quelqu'un attend dans ce slot : on le rejoint
+            amHost = false;
+            setMMStatus('Adversaire trouvé ! Connexion…');
+            if (peer) peer.destroy();
+            peer = new Peer();
+            peer.on('open', () => {
+                const c = peer.connect(slot);
+                attachConn(c);
+                c.on('open', () => {
+                    clearTimeout(mmTimeout);
+                    showMMSearching(false);
+                    isOnline = true;
+                    startSetupPhase();
+                });
+            });
+            peer.on('error', () => {
+                // Le pair a disparu entre temps, on prend sa place
+                setMMStatus('Reconnexion…');
+                tryClaimSlot(slot);
+            });
+        } else {
+            setMMStatus('Erreur réseau. Réessaie.');
+            showMMSearching(false);
+        }
+    });
+}
+
+function cancelMatchmaking() {
+    clearTimeout(mmTimeout);
+    if (peer) { peer.destroy(); peer = null; }
+    showMMSearching(false);
 }
 
 // ── PeerJS multiplayer ────────────────────────────────────────────────────────
