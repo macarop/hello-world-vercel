@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Editeurs
+.vscode/
+.idea/
+*.swp
+
+# Vercel
+.vercel
+
+# Dependances (si tu ajoutes du build plus tard)
+node_modules/
