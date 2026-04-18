@@ -16,19 +16,68 @@
             min-height: 100vh;
             padding: 1.5rem 1rem;
         }
-        h1 { margin-bottom: 0.4rem; font-size: 1.8rem; }
-        #status {
-            min-height: 1.6rem;
-            font-size: 1.1rem;
+
+        /* ── Lobby ── */
+        #lobby {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.2rem;
+            max-width: 360px;
+            width: 100%;
+            margin-top: 2.5rem;
+        }
+        #lobby h1 { font-size: 2rem; }
+        #lobby > p { opacity: 0.65; text-align: center; font-size: 0.95rem; }
+        .card {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: 1.3rem;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
+        }
+        .card h2 { font-size: 1rem; opacity: 0.85; }
+        .card small { opacity: 0.55; font-size: 0.82rem; }
+        input[type="text"] {
+            padding: 0.6rem 0.8rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            font-size: 1.4rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            width: 100%;
+            text-align: center;
+        }
+        input::placeholder { font-size: 1rem; letter-spacing: normal; text-transform: none; opacity: 0.4; }
+        #code-display { display: none; text-align: center; }
+        #code-text {
+            font-size: 2.4rem;
+            font-weight: 700;
+            letter-spacing: 0.3em;
             color: #ffd700;
-            font-weight: bold;
-            margin-bottom: 0.3rem;
+            padding: 0.3rem 0;
         }
-        #turn {
-            font-size: 1rem;
-            opacity: 0.75;
-            margin-bottom: 0.8rem;
+        #code-hint { font-size: 0.8rem; opacity: 0.55; margin-top: 0.2rem; }
+        #lobby-status { font-size: 0.9rem; opacity: 0.65; min-height: 1.2rem; text-align: center; }
+
+        /* ── Game ── */
+        #game { display: none; flex-direction: column; align-items: center; }
+        #game h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+        #player-badge {
+            font-size: 0.88rem;
+            padding: 0.25rem 0.9rem;
+            border-radius: 20px;
+            margin-bottom: 0.4rem;
         }
+        .badge-w { background: rgba(255,255,255,0.15); }
+        .badge-b { background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.1); }
+        #status { min-height: 1.5rem; font-size: 1.05rem; color: #ffd700; font-weight: bold; margin-bottom: 0.2rem; }
+        #turn { font-size: 0.9rem; opacity: 0.7; margin-bottom: 0.7rem; }
         #board {
             display: grid;
             grid-template-columns: repeat(8, 1fr);
@@ -49,12 +98,11 @@
         }
         .light { background: #f0d9b5; }
         .dark  { background: #b58863; }
-        .selected    { background: #6abf6a !important; }
-        .in-check    { background: #e74c3c !important; }
+        .selected  { background: #6abf6a !important; }
+        .in-check  { background: #e74c3c !important; }
         .valid-move::after {
             content: '';
-            width: 32%;
-            height: 32%;
+            width: 32%; height: 32%;
             background: rgba(0,0,0,0.22);
             border-radius: 50%;
             position: absolute;
@@ -67,231 +115,389 @@
             font-weight: 700;
             pointer-events: none;
         }
-        .coord-rank { bottom: 2px; left: 3px; color: rgba(0,0,0,0.45); }
-        .coord-file { top: 2px; right: 3px; color: rgba(0,0,0,0.45); }
+        .coord-rank { bottom: 2px; left: 3px; }
+        .coord-file { top: 2px; right: 3px; }
         .light .coord-rank, .light .coord-file { color: rgba(181,136,99,0.9); }
         .dark  .coord-rank, .dark  .coord-file { color: rgba(240,217,181,0.9); }
-        #controls {
-            margin-top: 1.2rem;
-            display: flex;
-            gap: 0.8rem;
-        }
-        button, .back-btn {
-            padding: 0.6rem 1.4rem;
+
+        /* ── Buttons ── */
+        #controls { margin-top: 1.1rem; display: flex; gap: 0.7rem; flex-wrap: wrap; justify-content: center; }
+        button, .btn {
+            padding: 0.55rem 1.3rem;
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             font-weight: 600;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
+            gap: 0.3rem;
         }
-        #btn-restart { background: #3498db; color: white; }
-        #btn-restart:hover { background: #2980b9; }
-        .back-btn { background: #444; color: white; }
-        .back-btn:hover { background: #333; }
+        .btn-blue  { background: #3498db; color: #fff; }
+        .btn-blue:hover  { background: #2980b9; }
+        .btn-green { background: #27ae60; color: #fff; }
+        .btn-green:hover { background: #229954; }
+        .btn-gray  { background: #444; color: #fff; }
+        .btn-gray:hover  { background: #333; }
+        #conn-info { margin-top: 0.7rem; font-size: 0.82rem; opacity: 0.55; }
+        .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+        .dot-on  { background: #2ecc71; }
+        .dot-off { background: #95a5a6; }
     </style>
 </head>
 <body>
+
+<!-- ── LOBBY ── -->
+<div id="lobby">
     <h1>♟ Échecs</h1>
+    <p>Joue en local ou invite un ami avec un code.</p>
+
+    <div class="card">
+        <h2>Créer une partie en ligne</h2>
+        <small>Tu joueras les Blancs. Partage le code à ton adversaire.</small>
+        <button class="btn-green" onclick="createGame()">Créer</button>
+        <div id="code-display">
+            <div id="code-text"></div>
+            <div id="code-hint">Partage ce code à ton adversaire</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Rejoindre une partie</h2>
+        <small>Tu joueras les Noirs.</small>
+        <input type="text" id="code-input" placeholder="Code à 6 caractères" maxlength="6">
+        <button class="btn-blue" onclick="joinGame()">Rejoindre</button>
+    </div>
+
+    <div class="card">
+        <button class="btn-gray" style="width:100%;justify-content:center" onclick="startLocal()">
+            Jouer en local (même écran)
+        </button>
+    </div>
+
+    <div id="lobby-status"></div>
+    <a href="index.html" class="btn btn-gray">← Retour</a>
+</div>
+
+<!-- ── GAME ── -->
+<div id="game">
+    <h1>♟ Échecs</h1>
+    <div id="player-badge"></div>
     <div id="status"></div>
     <div id="turn"></div>
     <div id="board"></div>
     <div id="controls">
-        <a href="index.html" class="back-btn">← Retour</a>
-        <button id="btn-restart">Nouvelle partie</button>
+        <button class="btn-gray" onclick="backToLobby()">← Quitter</button>
+        <button class="btn-blue" id="btn-restart">Nouvelle partie</button>
     </div>
+    <div id="conn-info"></div>
+</div>
 
-    <script>
-    const SYM = { k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' };
+<script src="https://unpkg.com/peerjs@1/dist/peerjs.min.js"></script>
+<script>
+// ── Symbols ──────────────────────────────────────────────────────────────────
+const SYM = { k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' };
 
-    let board, turn, selected, validMoves, ep, cr, gameOver, statusMsg;
+// ── State ─────────────────────────────────────────────────────────────────────
+let board, turn, selected, validMoves, ep, cr, gameOver, statusMsg;
+let peer, conn, myColor, isOnline = false;
 
-    function init() {
-        board = Array(8).fill(null).map(() => Array(8).fill(null));
-        const back = ['r','n','b','q','k','b','n','r'];
-        for (let c = 0; c < 8; c++) {
-            board[0][c] = { t: back[c], col: 'b' };
-            board[1][c] = { t: 'p', col: 'b' };
-            board[6][c] = { t: 'p', col: 'w' };
-            board[7][c] = { t: back[c], col: 'w' };
+// ── Chess logic ───────────────────────────────────────────────────────────────
+const ib = (r, c) => r >= 0 && r < 8 && c >= 0 && c < 8;
+const copyB = b => b.map(row => row.map(p => p ? {...p} : null));
+
+function initBoard() {
+    board = Array(8).fill(null).map(() => Array(8).fill(null));
+    const back = ['r','n','b','q','k','b','n','r'];
+    for (let c = 0; c < 8; c++) {
+        board[0][c] = {t:back[c], col:'b'};
+        board[1][c] = {t:'p', col:'b'};
+        board[6][c] = {t:'p', col:'w'};
+        board[7][c] = {t:back[c], col:'w'};
+    }
+    turn='w'; selected=null; validMoves=[];
+    ep=null; cr={w:{k:true,q:true},b:{k:true,q:true}};
+    gameOver=false; statusMsg='';
+}
+
+function pseudoLegal(b, r, c, epT) {
+    const p=b[r][c]; if (!p) return [];
+    const {t,col}=p, opp=col==='w'?'b':'w', mv=[];
+    const free=(nr,nc)=>ib(nr,nc)&&!b[nr][nc];
+    const foe =(nr,nc)=>ib(nr,nc)&&b[nr][nc]?.col===opp;
+    const ok  =(nr,nc)=>free(nr,nc)||foe(nr,nc);
+    if (t==='p') {
+        const d=col==='w'?-1:1, sr=col==='w'?6:1;
+        if (free(r+d,c)) { mv.push({r:r+d,c}); if(r===sr&&free(r+2*d,c)) mv.push({r:r+2*d,c}); }
+        for (const dc of [-1,1]) {
+            if (foe(r+d,c+dc)) mv.push({r:r+d,c:c+dc});
+            if (epT?.r===r+d&&epT?.c===c+dc) mv.push({r:r+d,c:c+dc,ep:true});
         }
-        turn = 'w'; selected = null; validMoves = [];
-        ep = null; cr = { w:{k:true,q:true}, b:{k:true,q:true} };
-        gameOver = false; statusMsg = '';
+    } else if (t==='n') {
+        for (const [dr,dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]])
+            if (ok(r+dr,c+dc)) mv.push({r:r+dr,c:c+dc});
+    } else if (t==='k') {
+        for (const [dr,dc] of [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]])
+            if (ok(r+dr,c+dc)) mv.push({r:r+dr,c:c+dc});
+    } else {
+        const dirs=[];
+        if (t==='r'||t==='q') dirs.push([-1,0],[1,0],[0,-1],[0,1]);
+        if (t==='b'||t==='q') dirs.push([-1,-1],[-1,1],[1,-1],[1,1]);
+        for (const [dr,dc] of dirs) {
+            let nr=r+dr,nc=c+dc;
+            while(ib(nr,nc)){
+                if (!b[nr][nc]) mv.push({r:nr,c:nc});
+                else { if(b[nr][nc].col===opp) mv.push({r:nr,c:nc}); break; }
+                nr+=dr; nc+=dc;
+            }
+        }
+    }
+    return mv;
+}
+
+function applyMv(b, fr, fc, m) {
+    const p=b[fr][fc];
+    b[m.r][m.c]=p; b[fr][fc]=null;
+    if (m.ep) b[fr][m.c]=null;
+    if (m.castle==='k') { b[fr][5]=b[fr][7]; b[fr][7]=null; }
+    if (m.castle==='q') { b[fr][3]=b[fr][0]; b[fr][0]=null; }
+    if (p.t==='p'&&(m.r===0||m.r===7)) b[m.r][m.c]={t:'q',col:p.col};
+}
+
+function inCheck(b, col) {
+    let kr=-1,kc=-1;
+    L: for(let r=0;r<8;r++) for(let c=0;c<8;c++)
+        if(b[r][c]?.t==='k'&&b[r][c]?.col===col){kr=r;kc=c;break L;}
+    const opp=col==='w'?'b':'w';
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++)
+        if(b[r][c]?.col===opp&&pseudoLegal(b,r,c,null).some(m=>m.r===kr&&m.c===kc))
+            return true;
+    return false;
+}
+
+function castleMoves(b, r, c, col, rights) {
+    const mv=[];
+    if (inCheck(b,col)) return mv;
+    if (rights[col].k&&!b[r][c+1]&&!b[r][c+2]) {
+        const b1=copyB(b);applyMv(b1,r,c,{r,c:c+1});
+        const b2=copyB(b);applyMv(b2,r,c,{r,c:c+2});
+        if (!inCheck(b1,col)&&!inCheck(b2,col)) mv.push({r,c:c+2,castle:'k'});
+    }
+    if (rights[col].q&&!b[r][c-1]&&!b[r][c-2]&&!b[r][c-3]) {
+        const b1=copyB(b);applyMv(b1,r,c,{r,c:c-1});
+        const b2=copyB(b);applyMv(b2,r,c,{r,c:c-2});
+        if (!inCheck(b1,col)&&!inCheck(b2,col)) mv.push({r,c:c-2,castle:'q'});
+    }
+    return mv;
+}
+
+function legalMoves(b, r, c, epT, rights) {
+    const p=b[r][c]; if (!p) return [];
+    const legal=pseudoLegal(b,r,c,epT).filter(m=>{
+        const nb=copyB(b); applyMv(nb,r,c,m); return !inCheck(nb,p.col);
+    });
+    if (p.t==='k') legal.push(...castleMoves(b,r,c,p.col,rights));
+    return legal;
+}
+
+function anyLegal(b, col, epT, rights) {
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++)
+        if(b[r][c]?.col===col&&legalMoves(b,r,c,epT,rights).length>0) return true;
+    return false;
+}
+
+// ── Move execution ────────────────────────────────────────────────────────────
+function onClick(r, c) {
+    if (gameOver) return;
+    if (isOnline && turn!==myColor) return;
+    if (selected) {
+        const m=validMoves.find(m=>m.r===r&&m.c===c);
+        if (m) { doMove(selected.r,selected.c,m); selected=null; validMoves=[]; render(); return; }
+    }
+    const p=board[r][c];
+    if (p&&p.col===turn) { selected={r,c}; validMoves=legalMoves(board,r,c,ep,cr); }
+    else { selected=null; validMoves=[]; }
+    render();
+}
+
+function doMove(fr, fc, m, fromNet=false) {
+    const p=board[fr][fc];
+    ep=(p.t==='p'&&Math.abs(m.r-fr)===2)?{r:(fr+m.r)/2,c:fc}:null;
+    if(p.t==='k') cr[p.col]={k:false,q:false};
+    if(p.t==='r'){if(fc===7)cr[p.col].k=false;if(fc===0)cr[p.col].q=false;}
+    if(m.r===0&&m.c===7)cr.b.k=false; if(m.r===0&&m.c===0)cr.b.q=false;
+    if(m.r===7&&m.c===7)cr.w.k=false; if(m.r===7&&m.c===0)cr.w.q=false;
+    applyMv(board,fr,fc,m);
+    turn=turn==='w'?'b':'w';
+    if (!anyLegal(board,turn,ep,cr)) {
+        statusMsg=inCheck(board,turn)
+            ?`Échec et mat ! ${turn==='b'?'Blancs':'Noirs'} gagnent !`
+            :'Pat ! Match nul.';
+        gameOver=true;
+    } else {
+        statusMsg=inCheck(board,turn)?'Échec !':'';
+    }
+    if (!fromNet&&isOnline&&conn) conn.send({type:'move',fr,fc,m});
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+    const el=document.getElementById('board');
+    el.innerHTML='';
+    let ck=null;
+    if (inCheck(board,turn)) {
+        L2: for(let r=0;r<8;r++) for(let c=0;c<8;c++)
+            if(board[r][c]?.t==='k'&&board[r][c]?.col===turn){ck={r,c};break L2;}
+    }
+    const flip=isOnline&&myColor==='b';
+    for(let ri=0;ri<8;ri++) {
+        for(let ci=0;ci<8;ci++) {
+            const r=flip?7-ri:ri, c=flip?7-ci:ci;
+            const sq=document.createElement('div');
+            sq.className='square '+((r+c)%2===0?'light':'dark');
+            if(selected?.r===r&&selected?.c===c) sq.classList.add('selected');
+            const vm=validMoves.find(m=>m.r===r&&m.c===c);
+            if(vm) sq.classList.add(board[r][c]||vm.ep?'valid-capture':'valid-move');
+            if(ck?.r===r&&ck?.c===c) sq.classList.add('in-check');
+            // Coordinates
+            if(ci===0){const s=document.createElement('span');s.className='coord coord-rank';s.textContent=flip?ri+1:8-r;sq.appendChild(s);}
+            if(ri===7){const s=document.createElement('span');s.className='coord coord-file';s.textContent=(flip?'hgfedcba':'abcdefgh')[ci];sq.appendChild(s);}
+            // Piece
+            if(board[r][c]){
+                const p=board[r][c];
+                const s=document.createElement('span');
+                s.textContent=SYM[p.t];
+                s.style.color=p.col==='w'?'#fff':'#111';
+                s.style.textShadow=p.col==='w'
+                    ?'0 0 3px #000,0 1px 4px rgba(0,0,0,0.9)'
+                    :'0 0 2px rgba(255,255,255,0.3)';
+                sq.appendChild(s);
+            }
+            sq.addEventListener('click',()=>onClick(r,c));
+            el.appendChild(sq);
+        }
+    }
+    document.getElementById('status').textContent=statusMsg;
+    if (!gameOver) {
+        const myTurn=!isOnline||turn===myColor;
+        const who=turn==='w'?'Blancs ♙':'Noirs ♟';
+        document.getElementById('turn').textContent=myTurn?`Ton tour — ${who}`:`Tour adversaire — ${who}`;
+    } else {
+        document.getElementById('turn').textContent='';
+    }
+}
+
+// ── Lobby / Navigation ────────────────────────────────────────────────────────
+function showLobby() {
+    document.getElementById('lobby').style.display='flex';
+    document.getElementById('game').style.display='none';
+}
+function showGame() {
+    document.getElementById('lobby').style.display='none';
+    document.getElementById('game').style.display='flex';
+}
+function setLobbyStatus(msg) { document.getElementById('lobby-status').textContent=msg; }
+function setConnInfo(msg)    { document.getElementById('conn-info').textContent=msg; }
+
+function startLocal() {
+    isOnline=false; myColor='w';
+    initBoard(); showGame();
+    document.getElementById('player-badge').style.display='none';
+    setConnInfo('');
+    render();
+}
+
+function backToLobby() {
+    if (peer) { peer.destroy(); peer=null; }
+    conn=null; isOnline=false;
+    document.getElementById('code-display').style.display='none';
+    setLobbyStatus('');
+    showLobby();
+}
+
+// ── PeerJS multiplayer ────────────────────────────────────────────────────────
+function generateCode() {
+    const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    return Array.from({length:6},()=>c[Math.floor(Math.random()*c.length)]).join('');
+}
+
+function handleNetData(data) {
+    if (data.type==='move') {
+        doMove(data.fr,data.fc,data.m,true);
+        selected=null; validMoves=[];
         render();
+    } else if (data.type==='restart') {
+        initBoard(); render();
     }
+}
 
-    const ib = (r, c) => r >= 0 && r < 8 && c >= 0 && c < 8;
+function attachConn(c) {
+    conn=c;
+    conn.on('data', handleNetData);
+    conn.on('close', ()=>setConnInfo('⚠ Adversaire déconnecté'));
+    conn.on('error', ()=>setConnInfo('⚠ Erreur de connexion'));
+}
 
-    function copyB(b) { return b.map(row => row.map(p => p ? {...p} : null)); }
+function startOnlineGame() {
+    initBoard(); showGame();
+    const badge=document.getElementById('player-badge');
+    badge.style.display='';
+    badge.textContent=myColor==='w'?'Tu joues les Blancs ♙':'Tu joues les Noirs ♟';
+    badge.className='player-badge '+(myColor==='w'?'badge-w':'badge-b');
+    setConnInfo('<span class="dot dot-on"></span> Adversaire connecté');
+    render();
+}
 
-    function pseudoLegal(b, r, c, epTarget) {
-        const p = b[r][c]; if (!p) return [];
-        const { t, col } = p;
-        const opp = col === 'w' ? 'b' : 'w';
-        const mv = [];
-        const free = (nr, nc) => ib(nr,nc) && !b[nr][nc];
-        const foe  = (nr, nc) => ib(nr,nc) && b[nr][nc] && b[nr][nc].col === opp;
-        const ok   = (nr, nc) => free(nr,nc) || foe(nr,nc);
+function createGame() {
+    setLobbyStatus('Connexion au serveur...');
+    const code=generateCode();
+    if (peer) peer.destroy();
+    peer=new Peer(code);
+    peer.on('open', ()=>{
+        document.getElementById('code-display').style.display='block';
+        document.getElementById('code-text').textContent=code;
+        setLobbyStatus('En attente d\'un adversaire…');
+    });
+    peer.on('connection', c=>{
+        attachConn(c);
+        myColor='w'; isOnline=true;
+        startOnlineGame();
+    });
+    peer.on('error', err=>{
+        if (err.type==='unavailable-id') { createGame(); }
+        else setLobbyStatus('Erreur réseau. Réessaie.');
+    });
+}
 
-        if (t === 'p') {
-            const d = col === 'w' ? -1 : 1, sr = col === 'w' ? 6 : 1;
-            if (free(r+d, c)) {
-                mv.push({r:r+d, c});
-                if (r === sr && free(r+2*d, c)) mv.push({r:r+2*d, c});
-            }
-            for (const dc of [-1,1]) {
-                if (foe(r+d, c+dc)) mv.push({r:r+d, c:c+dc});
-                if (epTarget && epTarget.r===r+d && epTarget.c===c+dc)
-                    mv.push({r:r+d, c:c+dc, ep:true});
-            }
-        } else if (t === 'n') {
-            for (const [dr,dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]])
-                if (ok(r+dr, c+dc)) mv.push({r:r+dr, c:c+dc});
-        } else if (t === 'k') {
-            for (const [dr,dc] of [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]])
-                if (ok(r+dr, c+dc)) mv.push({r:r+dr, c:c+dc});
-        } else {
-            const dirs = [];
-            if (t==='r'||t==='q') dirs.push([-1,0],[1,0],[0,-1],[0,1]);
-            if (t==='b'||t==='q') dirs.push([-1,-1],[-1,1],[1,-1],[1,1]);
-            for (const [dr,dc] of dirs) {
-                let nr=r+dr, nc=c+dc;
-                while (ib(nr,nc)) {
-                    if (!b[nr][nc]) { mv.push({r:nr,c:nc}); }
-                    else { if (b[nr][nc].col===opp) mv.push({r:nr,c:nc}); break; }
-                    nr+=dr; nc+=dc;
-                }
-            }
-        }
-        return mv;
-    }
-
-    function applyMv(b, fr, fc, m) {
-        const p = b[fr][fc];
-        b[m.r][m.c] = p; b[fr][fc] = null;
-        if (m.ep) b[fr][m.c] = null;
-        if (m.castle==='k') { b[fr][5]=b[fr][7]; b[fr][7]=null; }
-        if (m.castle==='q') { b[fr][3]=b[fr][0]; b[fr][0]=null; }
-        if (p.t==='p' && (m.r===0||m.r===7)) b[m.r][m.c]={t:'q',col:p.col};
-    }
-
-    function inCheck(b, col) {
-        let kr=-1, kc=-1;
-        outer: for (let r=0;r<8;r++) for (let c=0;c<8;c++)
-            if (b[r][c]?.t==='k' && b[r][c]?.col===col) { kr=r; kc=c; break outer; }
-        const opp = col==='w'?'b':'w';
-        for (let r=0;r<8;r++) for (let c=0;c<8;c++)
-            if (b[r][c]?.col===opp)
-                if (pseudoLegal(b,r,c,null).some(m=>m.r===kr&&m.c===kc)) return true;
-        return false;
-    }
-
-    function castleMoves(b, r, c, col, rights) {
-        const mv = [];
-        if (inCheck(b, col)) return mv;
-        if (rights[col].k && !b[r][c+1] && !b[r][c+2]) {
-            const b1=copyB(b); applyMv(b1,r,c,{r,c:c+1});
-            const b2=copyB(b); applyMv(b2,r,c,{r,c:c+2});
-            if (!inCheck(b1,col) && !inCheck(b2,col)) mv.push({r,c:c+2,castle:'k'});
-        }
-        if (rights[col].q && !b[r][c-1] && !b[r][c-2] && !b[r][c-3]) {
-            const b1=copyB(b); applyMv(b1,r,c,{r,c:c-1});
-            const b2=copyB(b); applyMv(b2,r,c,{r,c:c-2});
-            if (!inCheck(b1,col) && !inCheck(b2,col)) mv.push({r,c:c-2,castle:'q'});
-        }
-        return mv;
-    }
-
-    function legalMoves(b, r, c, epT, rights) {
-        const p = b[r][c]; if (!p) return [];
-        const legal = pseudoLegal(b,r,c,epT).filter(m => {
-            const nb=copyB(b); applyMv(nb,r,c,m); return !inCheck(nb,p.col);
+function joinGame() {
+    const code=document.getElementById('code-input').value.trim().toUpperCase();
+    if (!code) return;
+    setLobbyStatus('Connexion en cours…');
+    if (peer) peer.destroy();
+    peer=new Peer();
+    peer.on('open', ()=>{
+        const c=peer.connect(code);
+        attachConn(c);
+        c.on('open', ()=>{
+            myColor='b'; isOnline=true;
+            startOnlineGame();
         });
-        if (p.t==='k') legal.push(...castleMoves(b,r,c,p.col,rights));
-        return legal;
-    }
+    });
+    peer.on('error', ()=>setLobbyStatus('Code invalide ou partie introuvable.'));
+}
 
-    function anyLegal(b, col, epT, rights) {
-        for (let r=0;r<8;r++) for (let c=0;c<8;c++)
-            if (b[r][c]?.col===col && legalMoves(b,r,c,epT,rights).length>0) return true;
-        return false;
-    }
+// ── Controls ──────────────────────────────────────────────────────────────────
+document.getElementById('btn-restart').addEventListener('click', ()=>{
+    initBoard();
+    if (isOnline&&conn) conn.send({type:'restart'});
+    render();
+});
 
-    function onClick(r, c) {
-        if (gameOver) return;
-        if (selected) {
-            const m = validMoves.find(m=>m.r===r&&m.c===c);
-            if (m) { doMove(selected.r, selected.c, m); selected=null; validMoves=[]; render(); return; }
-        }
-        const p = board[r][c];
-        if (p && p.col===turn) {
-            selected={r,c}; validMoves=legalMoves(board,r,c,ep,cr);
-        } else {
-            selected=null; validMoves=[];
-        }
-        render();
-    }
-
-    function doMove(fr, fc, m) {
-        const p = board[fr][fc];
-        ep = (p.t==='p' && Math.abs(m.r-fr)===2) ? {r:(fr+m.r)/2, c:fc} : null;
-        if (p.t==='k') cr[p.col]={k:false,q:false};
-        if (p.t==='r') { if(fc===7) cr[p.col].k=false; if(fc===0) cr[p.col].q=false; }
-        if(m.r===0&&m.c===7) cr.b.k=false; if(m.r===0&&m.c===0) cr.b.q=false;
-        if(m.r===7&&m.c===7) cr.w.k=false; if(m.r===7&&m.c===0) cr.w.q=false;
-        applyMv(board, fr, fc, m);
-        turn = turn==='w'?'b':'w';
-        if (!anyLegal(board,turn,ep,cr)) {
-            statusMsg = inCheck(board,turn)
-                ? `Échec et mat ! ${turn==='b'?'Blancs':'Noirs'} gagnent !`
-                : 'Pat ! Match nul.';
-            gameOver = true;
-        } else {
-            statusMsg = inCheck(board,turn) ? 'Échec !' : '';
-        }
-    }
-
-    function render() {
-        const el = document.getElementById('board');
-        el.innerHTML = '';
-        let checkKing = null;
-        if (inCheck(board,turn)) {
-            outer2: for (let r=0;r<8;r++) for (let c=0;c<8;c++)
-                if (board[r][c]?.t==='k'&&board[r][c]?.col===turn) { checkKing={r,c}; break outer2; }
-        }
-        for (let r=0;r<8;r++) {
-            for (let c=0;c<8;c++) {
-                const sq = document.createElement('div');
-                sq.className = 'square ' + ((r+c)%2===0 ? 'light' : 'dark');
-                if (selected?.r===r && selected?.c===c) sq.classList.add('selected');
-                const isValid = validMoves.find(m=>m.r===r&&m.c===c);
-                if (isValid) sq.classList.add(board[r][c]||isValid.ep ? 'valid-capture' : 'valid-move');
-                if (checkKing?.r===r && checkKing?.c===c) sq.classList.add('in-check');
-                if (c===0) { const s=document.createElement('span'); s.className='coord coord-rank'; s.textContent=8-r; sq.appendChild(s); }
-                if (r===7) { const s=document.createElement('span'); s.className='coord coord-file'; s.textContent='abcdefgh'[c]; sq.appendChild(s); }
-                if (board[r][c]) {
-                    const s=document.createElement('span');
-                    const p=board[r][c];
-                    s.textContent=SYM[p.t];
-                    s.style.color = p.col==='w' ? '#ffffff' : '#1a1a1a';
-                    s.style.textShadow = p.col==='w'
-                        ? '0 0 2px #000, 0 1px 3px rgba(0,0,0,0.8)'
-                        : '0 0 2px rgba(255,255,255,0.4)';
-                    sq.appendChild(s);
-                }
-                sq.addEventListener('click', ()=>onClick(r,c));
-                el.appendChild(sq);
-            }
-        }
-        document.getElementById('status').textContent = statusMsg;
-        document.getElementById('turn').textContent = gameOver ? '' : (turn==='w'?'Tour des blancs ♙':'Tour des noirs ♟');
-    }
-
-    document.getElementById('btn-restart').addEventListener('click', init);
-    init();
-    </script>
+// Allow pressing Enter to join
+document.getElementById('code-input').addEventListener('keydown', e=>{
+    if (e.key==='Enter') joinGame();
+});
+</script>
 </body>
 </html>
