@@ -462,7 +462,9 @@ function anyLegal(b, col, epT, rights) {
 function onClick(r, c) {
     // Admin: place or erase piece
     if (adminMode && adminPlacing !== undefined) {
-        board[r][c] = adminPlacing === null ? null : {...adminPlacing};
+        const piece = adminPlacing === null ? null : {...adminPlacing};
+        board[r][c] = piece;
+        if (isOnline && conn) conn.send({type:'admin_place', r, c, piece});
         render(); return;
     }
     if (gameOver && !adminMode) return;
@@ -711,6 +713,15 @@ function handleNetData(data) {
         render();
     } else if (data.type==='game_start') {
         launchGame(data.hostColor);
+    } else if (data.type==='admin_place') {
+        board[data.r][data.c] = data.piece; render();
+    } else if (data.type==='admin_skip') {
+        turn=turn==='w'?'b':'w'; selected=null; validMoves=[]; statusMsg=''; render();
+    } else if (data.type==='admin_reset') {
+        initBoard(); render();
+    } else if (data.type==='admin_clear') {
+        board=Array(8).fill(null).map(()=>Array(8).fill(null));
+        selected=null; validMoves=[]; statusMsg=''; render();
     }
 }
 
@@ -834,8 +845,8 @@ function toggleAdminBody() {
 
 function adminSkipTurn() {
     turn = turn === 'w' ? 'b' : 'w';
-    selected = null; validMoves = [];
-    statusMsg = '';
+    selected = null; validMoves = []; statusMsg = '';
+    if (isOnline && conn) conn.send({type:'admin_skip'});
     render();
 }
 
@@ -848,12 +859,16 @@ function adminToggleIllegal() {
 }
 
 function adminResetBoard() {
-    initBoard(); selected=null; validMoves=[]; render();
+    initBoard(); selected=null; validMoves=[];
+    if (isOnline && conn) conn.send({type:'admin_reset'});
+    render();
 }
 
 function adminClearBoard() {
     board = Array(8).fill(null).map(() => Array(8).fill(null));
-    selected=null; validMoves=[]; statusMsg=''; render();
+    selected=null; validMoves=[]; statusMsg='';
+    if (isOnline && conn) conn.send({type:'admin_clear'});
+    render();
 }
 
 function promptAdminCode() {
