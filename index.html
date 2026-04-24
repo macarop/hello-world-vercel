@@ -288,8 +288,11 @@
             box-shadow:0 1px 4px rgba(0,0,0,0.3);
             transition:transform 0.22s cubic-bezier(.4,0,.2,1);
         }
-        .vm-switch input:checked + .vm-knob { background:rgba(162,155,254,0.4); border-color:rgba(162,155,254,0.6); }
+        .vm-switch input:checked + .vm-knob { background:rgba(255,255,255,0.12); }
         .vm-switch input:checked + .vm-knob::before { transform:translateX(24px); }
+        .vm-switch:focus-within { outline: none; }
+        .vm-switch input:focus { outline: none; }
+        .vm-knob:focus { outline: none; }
 
         /* ── Brand ── */
         .brand-chess { font-size:3.2rem; line-height:1; margin-bottom:0.1rem; }
@@ -1106,7 +1109,14 @@
         document.getElementById('vm-label').textContent = isMobile ? 'Mode mobile' : 'Mode PC';
     }
     (function initViewMode() {
-        const isMob = localStorage.getItem('chess_mobile_mode') === '1';
+        let stored = localStorage.getItem('chess_mobile_mode');
+        if (stored === null) {
+            const isMob = /Android|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                (navigator.maxTouchPoints > 1 && window.innerWidth <= 900);
+            stored = isMob ? '1' : '0';
+            localStorage.setItem('chess_mobile_mode', stored);
+        }
+        const isMob = stored === '1';
         document.getElementById('vm-toggle').checked = isMob;
         document.getElementById('vm-pc').classList.toggle('on', !isMob);
         document.getElementById('vm-mob').classList.toggle('on',  isMob);

@@ -300,6 +300,29 @@
         body.mobile-mode #skin-panel,
         body.mobile-mode #admin-panel { margin-top: 0.4rem; width: min(96vw, 520px); }
 
+        /* Setup phase */
+        body.mobile-mode #setup { gap: 0.7rem; margin-top: 0.7rem; }
+        body.mobile-mode #setup h1 { font-size: 1.3rem; }
+        body.mobile-mode #setup > p { font-size: 0.8rem; }
+        body.mobile-mode .setup-player { padding: 0.6rem 0.5rem; border-radius: 10px; }
+        body.mobile-mode .setup-player .sp-name { font-size: 0.88rem; }
+        body.mobile-mode .vote-btn { padding: 0.55rem 0.4rem; font-size: 0.85rem; }
+        body.mobile-mode .vote-btn .vb-icon { font-size: 1.3rem; }
+        body.mobile-mode .vote-btn .vb-label { font-size: 0.72rem; }
+
+        /* Game-over & quit overlays */
+        body.mobile-mode .gameover-box { padding: 1.5rem 1.2rem; gap: 0.8rem; max-width: 90vw; }
+        body.mobile-mode .gameover-trophy { font-size: 2.2rem; }
+        body.mobile-mode .gameover-box h2 { font-size: 1.1rem; }
+        body.mobile-mode .gameover-box p { font-size: 0.82rem; }
+        body.mobile-mode .quit-box { padding: 1.3rem 1.2rem; max-width: 90vw; }
+        body.mobile-mode .quit-box h2 { font-size: 1.1rem; }
+
+        /* Lobby */
+        body.mobile-mode #lobby { gap: 0.7rem; max-width: 100%; }
+        body.mobile-mode #lobby h1 { font-size: 1.5rem; }
+        body.mobile-mode #lobby > p { font-size: 0.82rem; }
+
         /* ── Matchmaking ── */
         .mm-searching {
             display: flex; flex-direction: column; align-items: center;
@@ -1414,6 +1437,11 @@ document.getElementById('btn-restart').addEventListener('click', ()=>{
 document.getElementById('code-input').addEventListener('keydown', e=>{ if(e.key==='Enter') joinGame(); });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+if (localStorage.getItem('chess_mobile_mode') === null) {
+    const isMob = /Android|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints > 1 && window.innerWidth <= 900);
+    localStorage.setItem('chess_mobile_mode', isMob ? '1' : '0');
+}
 if (localStorage.getItem('chess_mobile_mode') === '1') document.body.classList.add('mobile-mode');
 myPseudo=getStoredPseudo();
 </script>
