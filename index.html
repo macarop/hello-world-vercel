@@ -268,6 +268,29 @@
         .rank-bar { height:100%; border-radius:99px; background:#a29bfe; }
         .rank-next-label { font-size:0.72rem; opacity:0.45; }
 
+        /* ── Toggle affichage ── */
+        .view-mode-wrap { display:flex; flex-direction:column; align-items:center; gap:0.3rem; margin-top:1.2rem; }
+        .view-mode-row  { display:flex; align-items:center; gap:0.75rem; }
+        .vm-icon { font-size:1.5rem; opacity:0.3; transition:opacity 0.2s, transform 0.2s; line-height:1; }
+        .vm-icon.on { opacity:1; transform:scale(1.18); }
+        .vm-label { font-size:0.72rem; opacity:0.5; }
+        .vm-switch { position:relative; width:50px; height:26px; display:inline-block; cursor:pointer; flex-shrink:0; }
+        .vm-switch input { opacity:0; width:0; height:0; }
+        .vm-knob {
+            position:absolute; inset:0;
+            background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25);
+            border-radius:26px; transition:background 0.2s, border-color 0.2s;
+        }
+        .vm-knob::before {
+            content:''; position:absolute;
+            width:20px; height:20px; left:2px; top:2px;
+            background:#fff; border-radius:50%;
+            box-shadow:0 1px 4px rgba(0,0,0,0.3);
+            transition:transform 0.22s cubic-bezier(.4,0,.2,1);
+        }
+        .vm-switch input:checked + .vm-knob { background:rgba(162,155,254,0.4); border-color:rgba(162,155,254,0.6); }
+        .vm-switch input:checked + .vm-knob::before { transform:translateX(24px); }
+
         /* ── Brand ── */
         .brand-chess { font-size:3.2rem; line-height:1; margin-bottom:0.1rem; }
         .brand-title { font-size:2rem; font-weight:900; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.4rem; line-height:1; }
@@ -318,7 +341,7 @@
     <main class="container">
         <div class="brand-chess">♟</div>
         <h1 class="brand-title">CHESS<span class="brand-accent">madmaxou</span></h1>
-        <p class="subtitle">Le chess de Maxence & les amis</p>
+        <p class="subtitle">Une application faite par des passionnés d'échecs, pour des passionnés</p>
         <a href="chess.html" class="chess-btn">♟ Jouer</a>
         <br>
         <button class="skin-btn" onclick="openSkins()">🎨 Personnaliser mes pièces</button>
@@ -328,6 +351,17 @@
         <button id="stats-btn" onclick="openStats()" style="margin-top:0.6rem">📊 Stats & Classement</button>
         <br>
         <button id="lb-btn" onclick="openLeaderboard()" style="margin-top:0.6rem">🏆 Classement</button>
+        <div class="view-mode-wrap">
+            <div class="view-mode-row">
+                <span class="vm-icon on" id="vm-pc">♜</span>
+                <label class="vm-switch">
+                    <input type="checkbox" id="vm-toggle" onchange="setViewMode(this.checked)">
+                    <span class="vm-knob"></span>
+                </label>
+                <span class="vm-icon" id="vm-mob">♟</span>
+            </div>
+            <div class="vm-label" id="vm-label">Mode PC</div>
+        </div>
     </main>
 
     <!-- ── STATS MODAL ── -->
@@ -1063,6 +1097,21 @@
         closeDrawModal();
         buildGrid('w'); buildGrid('b'); openSkins();
     }
+
+    // ── Toggle mode affichage ─────────────────────────────────────────────────
+    function setViewMode(isMobile) {
+        localStorage.setItem('chess_mobile_mode', isMobile ? '1' : '0');
+        document.getElementById('vm-pc').classList.toggle('on', !isMobile);
+        document.getElementById('vm-mob').classList.toggle('on',  isMobile);
+        document.getElementById('vm-label').textContent = isMobile ? 'Mode mobile' : 'Mode PC';
+    }
+    (function initViewMode() {
+        const isMob = localStorage.getItem('chess_mobile_mode') === '1';
+        document.getElementById('vm-toggle').checked = isMob;
+        document.getElementById('vm-pc').classList.toggle('on', !isMob);
+        document.getElementById('vm-mob').classList.toggle('on',  isMob);
+        document.getElementById('vm-label').textContent = isMob ? 'Mode mobile' : 'Mode PC';
+    })();
     </script>
 </body>
 </html>
