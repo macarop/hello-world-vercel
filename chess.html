@@ -120,6 +120,7 @@
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; position: relative; aspect-ratio: 1;
             font-size: calc(min(90vw, 510px, calc(100vh - 340px)) / 9.5); user-select: none;
+            overflow: hidden; min-width: 0; min-height: 0;
         }
         .light { background: #f0d9b5; }
         .dark  { background: #b58863; }
@@ -372,6 +373,11 @@
     <div class="card">
         <button class="btn-gray" style="width:100%;justify-content:center" onclick="startLocal()">Jouer en local (même écran)</button>
     </div>
+    <div class="card">
+        <h2>Jouer contre le bot</h2>
+        <small>Affronte une intelligence artificielle.</small>
+        <button class="btn-blue" style="width:100%;justify-content:center" onclick="startVsBot()">🤖 Jouer contre le bot</button>
+    </div>
     <div id="lobby-status"></div>
     <a href="index.html" class="btn btn-gray">← Retour</a>
 </div>
@@ -587,6 +593,7 @@ function getSkin(col) {
 // ── State ─────────────────────────────────────────────────────────────────────
 let board, turn, selected, validMoves, ep, cr, gameOver, statusMsg;
 let peer, conn, myColor, isOnline = false;
+let isVsBot = false, botColor = 'b';
 let myPseudo = '', oppPseudo = ''; let oppMdmelo = null;
 let opponentQuitReceived = false;
 let myVote = null, oppVote = null; // 'w' | 'b' | 'random'
@@ -711,6 +718,7 @@ function onClick(r, c) {
     }
     if (gameOver && !adminMode) return;
     if (isOnline && turn!==myColor && !adminMode) return;
+    if (isVsBot && turn===botColor && !adminMode) return;
     if (selected) {
         if (adminMode && adminIllegal) {
             // Move anywhere, no rules
@@ -754,6 +762,7 @@ function doMove(fr, fc, m, fromNet=false) {
     }
     if (!fromNet&&isOnline&&conn) conn.send({type:'move',fr,fc,m});
     if (gameOver) setTimeout(showGameOver, 400);
+    else if (!fromNet && isVsBot && turn === botColor) setTimeout(botPlay, 350);
 }
 
 function showGameOver() {
@@ -824,8 +833,19 @@ function saveToLeaderboard(pseudo, mdmelo, wins) {
 // ── Render ────────────────────────────────────────────────────────────────────
 function updatePlayersBar() {
     const bar = document.getElementById('players-bar');
-    if (!isOnline) { bar.style.display='none'; return; }
+    if (!isOnline && !isVsBot) { bar.style.display='none'; return; }
     bar.style.display='';
+    if (isVsBot) {
+        document.getElementById('name-w').textContent = (myColor==='w' ? myPseudo : '🤖 Bot') || '—';
+        document.getElementById('name-b').textContent = (myColor==='b' ? myPseudo : '🤖 Bot') || '—';
+        ['chip-w','chip-b'].forEach(id =>
+            document.getElementById(id).querySelectorAll('.chip-wins,.chip-admin,.chip-mdmelo').forEach(el=>el.remove()));
+        const myChip = document.getElementById(myColor==='w'?'chip-w':'chip-b');
+        const wins = parseInt(localStorage.getItem('chess_wins')||'0');
+        if (wins > 0) { const wb=document.createElement('span'); wb.className='chip-wins'; wb.textContent=`🏆${wins}`; myChip.appendChild(wb); }
+        document.getElementById('edit-btn').style.display='none';
+        return;
+    }
     document.getElementById('name-w').textContent=(myColor==='w'?myPseudo:oppPseudo)||'—';
     document.getElementById('name-b').textContent=(myColor==='b'?myPseudo:oppPseudo)||'—';
     // remove stale badges then rebuild
@@ -1053,14 +1073,14 @@ function setConnInfo(html)   { document.getElementById('conn-info').innerHTML=ht
 
 function startLocal() {
     myPseudo=getStoredPseudo()||'Joueur';
-    isOnline=false; myColor='w'; oppPseudo='';
+    isOnline=false; isVsBot=false; myColor='w'; oppPseudo='';
     initBoard(); showGame(); setConnInfo(''); render();
 }
 
 function backToLobby() {
     clearTimeout(mmTimeout);
     if (peer) { peer.destroy(); peer=null; }
-    conn=null; isOnline=false; oppPseudo=''; amHost=false; oppSkinId=null; oppMdmelo=null;
+    conn=null; isOnline=false; isVsBot=false; oppPseudo=''; amHost=false; oppSkinId=null; oppMdmelo=null;
     document.getElementById('code-display').style.display='none';
     showMMSearching(false);
     setLobbyStatus(''); showLobby();
@@ -1435,6 +1455,103 @@ document.getElementById('btn-restart').addEventListener('click', ()=>{
     else { initBoard(); render(); }
 });
 document.getElementById('code-input').addEventListener('keydown', e=>{ if(e.key==='Enter') joinGame(); });
+
+// ── Bot ───────────────────────────────────────────────────────────────────────
+const BOT_VAL = {p:100, n:320, b:330, r:500, q:900, k:20000};
+
+function evalBoard(b) {
+    let s = 0;
+    for (let r = 0; r < 8; r++)
+        for (let c = 0; c < 8; c++)
+            if (b[r][c]) {
+                const v = BOT_VAL[b[r][c].t];
+                s += b[r][c].col === 'w' ? v : -v;
+            }
+    return s;
+}
+
+function getAllMoves(b, col, epT, rights) {
+    const moves = [];
+    for (let r = 0; r < 8; r++)
+        for (let c = 0; c < 8; c++)
+            if (b[r][c]?.col === col)
+                legalMoves(b, r, c, epT, rights).forEach(m => moves.push({fr:r, fc:c, m}));
+    // captures first for better alpha-beta cutoffs
+    moves.sort((a, b_) => (b_.m.capture ? 1 : 0) - (a.m.capture ? 1 : 0));
+    return moves;
+}
+
+function minimax(b, depth, alpha, beta, maximizing, epT, rights) {
+    if (depth === 0) return evalBoard(b);
+    const col = maximizing ? 'w' : 'b';
+    const moves = getAllMoves(b, col, epT, rights);
+    if (moves.length === 0) return inCheck(b, col) ? (maximizing ? -50000 : 50000) : 0;
+    if (maximizing) {
+        let best = -Infinity;
+        for (const {fr, fc, m} of moves) {
+            const nb = copyB(b);
+            const newEp = (nb[fr][fc]?.t==='p' && Math.abs(m.r-fr)===2) ? {r:(fr+m.r)/2,c:fc} : null;
+            const newCr = {w:{k:rights.w.k,q:rights.w.q}, b:{k:rights.b.k,q:rights.b.q}};
+            if (nb[fr][fc]?.t==='k') newCr[col]={k:false,q:false};
+            if (nb[fr][fc]?.t==='r'){if(fc===7)newCr[col].k=false;if(fc===0)newCr[col].q=false;}
+            applyMv(nb, fr, fc, m);
+            best = Math.max(best, minimax(nb, depth-1, alpha, beta, false, newEp, newCr));
+            alpha = Math.max(alpha, best);
+            if (beta <= alpha) break;
+        }
+        return best;
+    } else {
+        let best = Infinity;
+        for (const {fr, fc, m} of moves) {
+            const nb = copyB(b);
+            const newEp = (nb[fr][fc]?.t==='p' && Math.abs(m.r-fr)===2) ? {r:(fr+m.r)/2,c:fc} : null;
+            const newCr = {w:{k:rights.w.k,q:rights.w.q}, b:{k:rights.b.k,q:rights.b.q}};
+            if (nb[fr][fc]?.t==='k') newCr[col]={k:false,q:false};
+            if (nb[fr][fc]?.t==='r'){if(fc===7)newCr[col].k=false;if(fc===0)newCr[col].q=false;}
+            applyMv(nb, fr, fc, m);
+            best = Math.min(best, minimax(nb, depth-1, alpha, beta, true, newEp, newCr));
+            beta = Math.min(beta, best);
+            if (beta <= alpha) break;
+        }
+        return best;
+    }
+}
+
+function botPlay() {
+    if (!isVsBot || gameOver || turn !== botColor) return;
+    document.getElementById('status').textContent = '🤖 Réfléchit…';
+    setTimeout(() => {
+        const moves = getAllMoves(board, botColor, ep, cr);
+        if (!moves.length) return;
+        const maximizing = botColor === 'w';
+        let bestScore = maximizing ? -Infinity : Infinity;
+        let bestMove = null;
+        // shuffle for variety at equal scores
+        for (let i = moves.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [moves[i], moves[j]] = [moves[j], moves[i]];
+        }
+        for (const {fr, fc, m} of moves) {
+            const nb = copyB(board);
+            const newEp = (nb[fr][fc]?.t==='p' && Math.abs(m.r-fr)===2) ? {r:(fr+m.r)/2,c:fc} : null;
+            const newCr = {w:{k:cr.w.k,q:cr.w.q}, b:{k:cr.b.k,q:cr.b.q}};
+            if (nb[fr][fc]?.t==='k') newCr[botColor]={k:false,q:false};
+            if (nb[fr][fc]?.t==='r'){if(fc===7)newCr[botColor].k=false;if(fc===0)newCr[botColor].q=false;}
+            applyMv(nb, fr, fc, m);
+            const score = minimax(nb, 2, -Infinity, Infinity, !maximizing, newEp, newCr);
+            if (maximizing ? score > bestScore : score < bestScore) {
+                bestScore = score; bestMove = {fr, fc, m};
+            }
+        }
+        if (bestMove) { doMove(bestMove.fr, bestMove.fc, bestMove.m); selected=null; validMoves=[]; render(); }
+    }, 0);
+}
+
+function startVsBot() {
+    myPseudo = getStoredPseudo() || 'Joueur';
+    isOnline = false; isVsBot = true; botColor = 'b'; myColor = 'w'; oppPseudo = '🤖 Bot';
+    initBoard(); showGame(); setConnInfo(''); render();
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 if (localStorage.getItem('chess_mobile_mode') === null) {
