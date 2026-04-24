@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CHESSmadmaxou</title>
+    <title>Chess</title>
     <link rel="stylesheet" href="style.css">
     <style>
         .skin-btn {
@@ -317,7 +317,7 @@
 <body>
     <main class="container">
         <div class="brand-chess">♟</div>
-        <h1 class="brand-title">CHESS<span class="brand-accent">madmaxou</span></h1>
+        <h1 class="brand-title"><span class="brand-accent">CHESS</span></h1>
         <p class="subtitle">Le chess de Maxence & les amis</p>
         <a href="chess.html" class="chess-btn">♟ Jouer</a>
         <br>
@@ -390,6 +390,18 @@
     <div id="account-modal">
         <div id="account-box">
             <h2>👤 Mon compte</h2>
+
+            <div class="acc-section">
+                <h3>👤 Mon pseudo</h3>
+                <p>Ton nom affiché en partie.</p>
+                <div class="acc-row">
+                    <input type="text" id="acc-pseudo-input" placeholder="Entre ton pseudo"
+                        maxlength="20"
+                        style="flex:1;padding:0.45rem 0.7rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:#fff;font-size:0.9rem">
+                    <button onclick="savePseudoFromAccount()">Sauvegarder</button>
+                </div>
+                <div class="acc-msg" id="acc-pseudo-msg"></div>
+            </div>
 
             <div class="acc-section">
                 <h3>🔑 Mon code personnel</h3>
@@ -626,9 +638,20 @@
         document.getElementById('acc-import-msg').textContent = '';
         document.getElementById('acc-code-save-msg').textContent = '';
         document.getElementById('acc-import-in').value = '';
+        document.getElementById('acc-pseudo-input').value = localStorage.getItem('chess_pseudo') || '';
+        document.getElementById('acc-pseudo-msg').textContent = '';
         // Pre-fill personal code if already set
         document.getElementById('acc-personal-code').value = localStorage.getItem('chess_account_code') || '';
         document.getElementById('account-modal').classList.add('show');
+    }
+
+    function savePseudoFromAccount() {
+        const val = document.getElementById('acc-pseudo-input').value.trim().slice(0, 20);
+        const msg = document.getElementById('acc-pseudo-msg');
+        if (!val) { msg.textContent = 'Entre un pseudo.'; msg.className = 'acc-msg err'; return; }
+        localStorage.setItem('chess_pseudo', val);
+        msg.textContent = `✓ Pseudo "${val}" sauvegardé !`;
+        msg.className = 'acc-msg ok';
     }
     function closeAccount() {
         document.getElementById('account-modal').classList.remove('show');
@@ -719,6 +742,9 @@
         }
     }
 
+    document.getElementById('acc-pseudo-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') savePseudoFromAccount();
+    });
     document.getElementById('acc-personal-code').addEventListener('keydown', e => {
         if (e.key === 'Enter') savePersonalCode();
     });

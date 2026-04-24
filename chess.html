@@ -299,10 +299,6 @@
     <h1>♟ Échecs</h1>
     <p>Joue en local ou invite un ami avec un code.</p>
     <div class="card">
-        <h2>Ton pseudo</h2>
-        <input type="text" id="pseudo-input" placeholder="Entre ton pseudo" maxlength="20">
-    </div>
-    <div class="card">
         <h2>Créer une partie en ligne</h2>
         <small>Partage le code à ton adversaire.</small>
         <button class="btn-green" onclick="createGame()">Créer</button>
@@ -1000,7 +996,6 @@ function showLobby() {
     document.getElementById('quit-overlay').classList.remove('show');
     document.getElementById('gameover-overlay').classList.remove('show');
     document.getElementById('admin-trigger').classList.remove('visible');
-    document.getElementById('pseudo-input').value=myPseudo;
 }
 function showGame() {
     document.getElementById('lobby').style.display='none';
@@ -1012,8 +1007,8 @@ function setLobbyStatus(msg) { document.getElementById('lobby-status').textConte
 function setConnInfo(html)   { document.getElementById('conn-info').innerHTML=html; }
 
 function startLocal() {
-    myPseudo=document.getElementById('pseudo-input').value.trim()||'Joueur';
-    savePseudo(myPseudo); isOnline=false; myColor='w'; oppPseudo='';
+    myPseudo=getStoredPseudo()||'Joueur';
+    isOnline=false; myColor='w'; oppPseudo='';
     initBoard(); showGame(); setConnInfo(''); render();
 }
 
@@ -1044,8 +1039,7 @@ function showMMSearching(visible) {
 }
 
 function startMatchmaking() {
-    myPseudo = document.getElementById('pseudo-input').value.trim() || 'Joueur';
-    savePseudo(myPseudo);
+    myPseudo = getStoredPseudo() || 'Joueur';
     showMMSearching(true);
     setMMStatus('Connexion…');
     tryClaimSlot(mmSlot());
@@ -1172,8 +1166,8 @@ function startSetupPhase() {
 }
 
 function createGame() {
-    myPseudo=document.getElementById('pseudo-input').value.trim()||'Joueur';
-    savePseudo(myPseudo); amHost=true;
+    myPseudo=getStoredPseudo()||'Joueur';
+    amHost=true;
     setLobbyStatus('Connexion au serveur…');
     const code=generateCode();
     if (peer) peer.destroy();
@@ -1194,8 +1188,8 @@ function createGame() {
 }
 
 function joinGame() {
-    myPseudo=document.getElementById('pseudo-input').value.trim()||'Joueur';
-    savePseudo(myPseudo); amHost=false;
+    myPseudo=getStoredPseudo()||'Joueur';
+    amHost=false;
     const code=document.getElementById('code-input').value.trim().toUpperCase();
     if (!code) return;
     setLobbyStatus('Connexion en cours…');
@@ -1399,7 +1393,6 @@ document.getElementById('code-input').addEventListener('keydown', e=>{ if(e.key=
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 myPseudo=getStoredPseudo();
-document.getElementById('pseudo-input').value=myPseudo;
 </script>
 </body>
 </html>
