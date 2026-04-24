@@ -6,6 +6,7 @@
     <title>Échecs — Maxence</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { overflow-y: auto; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: #1a1a2e;
@@ -14,7 +15,7 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            padding: 1.5rem 1rem;
+            padding: 1.5rem 1rem 3rem;
             overflow-y: auto;
         }
 
@@ -105,19 +106,20 @@
         .chip-edit:hover { color: #fff; }
         .chip-wins { font-size: 0.72rem; color: #ffd700; font-weight: 700; opacity: 0.9; }
         .chip-admin { font-size: 0.75rem; color: #ffd700; font-weight: 700; letter-spacing: 0; }
+        .chip-mdmelo { font-size: 0.72rem; color: #a29bfe; font-weight: 700; opacity: 0.9; }
         .vs { opacity: 0.45; font-size: 0.85rem; }
         #status { min-height: 1.4rem; font-size: 1rem; color: #ffd700; font-weight: bold; margin-bottom: 0.15rem; }
         #turn   { font-size: 0.88rem; opacity: 0.65; margin-bottom: 0.65rem; }
         #board {
             display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
             border: 3px solid #444;
-            width: min(90vw, 510px, calc(100vh - 270px));
-            height: min(90vw, 510px, calc(100vh - 270px));
+            width: min(90vw, 510px, calc(100vh - 340px));
+            height: min(90vw, 510px, calc(100vh - 340px));
         }
         .square {
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; position: relative; aspect-ratio: 1;
-            font-size: calc(min(90vw, 510px, calc(100vh - 270px)) / 9.5); user-select: none;
+            font-size: calc(min(90vw, 510px, calc(100vh - 340px)) / 9.5); user-select: none;
         }
         .light { background: #f0d9b5; }
         .dark  { background: #b58863; }
@@ -430,6 +432,19 @@
                     <button class="btn-gold" onclick="adminClearBoard()">🗑 Vider plateau</button>
                 </div>
             </div>
+            <div class="admin-section">
+                <label>mdmélo :</label>
+                <div style="display:flex;flex-wrap:wrap;gap:0.4rem;align-items:center">
+                    <span style="font-size:0.8rem;opacity:0.7">Moi :</span>
+                    <input type="number" id="admin-mdmelo-me" min="0" max="99999"
+                        style="width:72px;padding:0.25rem 0.4rem;border-radius:6px;border:1px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.08);color:#ffd700;font-size:0.85rem">
+                    <button class="btn-gold" onclick="adminSetMdmelo('me')">✓</button>
+                    <span style="font-size:0.8rem;opacity:0.7;margin-left:0.3rem">Adversaire :</span>
+                    <input type="number" id="admin-mdmelo-opp" min="0" max="99999"
+                        style="width:72px;padding:0.25rem 0.4rem;border-radius:6px;border:1px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.08);color:#ffd700;font-size:0.85rem">
+                    <button class="btn-gold" onclick="adminSetMdmelo('opp')">✓</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -442,6 +457,7 @@
         <div class="gameover-trophy" id="gameover-trophy">🏆</div>
         <h2 id="gameover-msg"></h2>
         <p id="gameover-sub"></p>
+        <div id="gameover-mdmelo" style="font-size:0.88rem;color:#a29bfe;font-weight:600;min-height:1.2rem"></div>
         <div class="gameover-btns">
             <button class="btn-gray" onclick="closeGameOver()">Voir le plateau</button>
             <button class="btn-green" onclick="restartFromGameOver()">Recommencer</button>
@@ -530,7 +546,7 @@ function getSkin(col) {
 // ── State ─────────────────────────────────────────────────────────────────────
 let board, turn, selected, validMoves, ep, cr, gameOver, statusMsg;
 let peer, conn, myColor, isOnline = false;
-let myPseudo = '', oppPseudo = '';
+let myPseudo = '', oppPseudo = ''; let oppMdmelo = null;
 let opponentQuitReceived = false;
 let myVote = null, oppVote = null; // 'w' | 'b' | 'random'
 let amHost = false;
@@ -705,13 +721,23 @@ function showGameOver() {
     document.getElementById('gameover-msg').textContent = statusMsg;
     if (isOnline) {
         const iWon = (turn==='b'&&myColor==='w') || (turn==='w'&&myColor==='b');
-        if (!isPat && iWon) {
-            const wins = parseInt(localStorage.getItem('chess_wins')||'0') + 1;
-            localStorage.setItem('chess_wins', wins);
-        }
-        document.getElementById('gameover-sub').textContent = isPat ? 'Égalité !' : iWon ? 'Bien joué !' : 'Bonne chance la prochaine fois.';
+        const inc = k => localStorage.setItem(k, parseInt(localStorage.getItem(k)||'0') + 1);
+        inc('chess_games_played');
+        if (isPat)       inc('chess_draws');
+        else if (iWon)   inc('chess_wins');
+        else             inc('chess_losses');
+        const mdmBefore = parseInt(localStorage.getItem('chess_mdmelo') || '1000');
+        const mdmDelta  = isPat ? 3 : iWon ? 25 : -20;
+        const mdmAfter  = Math.max(0, mdmBefore + mdmDelta);
+        localStorage.setItem('chess_mdmelo', String(mdmAfter));
+        saveToLeaderboard(myPseudo, mdmAfter, parseInt(localStorage.getItem('chess_wins') || '0'));
+        const mdmRank   = getMdmeloRank(mdmAfter);
+        const deltaStr  = mdmDelta >= 0 ? `+${mdmDelta}` : String(mdmDelta);
+        document.getElementById('gameover-sub').textContent    = isPat ? 'Égalité !' : iWon ? 'Bien joué !' : 'Bonne chance la prochaine fois.';
+        document.getElementById('gameover-mdmelo').textContent = `${mdmRank.emoji} ${mdmAfter} mdmélo (${deltaStr})`;
     } else {
-        document.getElementById('gameover-sub').textContent = isPat ? 'Partie nulle.' : '';
+        document.getElementById('gameover-sub').textContent    = isPat ? 'Partie nulle.' : '';
+        document.getElementById('gameover-mdmelo').textContent = '';
     }
     document.getElementById('gameover-overlay').classList.add('show');
 }
@@ -727,6 +753,33 @@ function restartFromGameOver() {
     else { initBoard(); render(); }
 }
 
+// ── Ranking ───────────────────────────────────────────────────────────────────
+function getMdmeloRank(s) {
+    if (s >= 1800) return {emoji:'👑', name:'Légende', prev:1800, next:null};
+    if (s >= 1600) return {emoji:'🌟', name:'Maître',  prev:1600, next:1800};
+    if (s >= 1400) return {emoji:'💎', name:'Platine', prev:1400, next:1600};
+    if (s >= 1200) return {emoji:'🥇', name:'Or',      prev:1200, next:1400};
+    if (s >= 1000) return {emoji:'🥈', name:'Argent',  prev:1000, next:1200};
+    if (s >=  800) return {emoji:'🥉', name:'Bronze',  prev:800,  next:1000};
+    return {emoji:'🪨', name:'Débutant', prev:0, next:800};
+}
+
+function saveToLeaderboard(pseudo, mdmelo, wins) {
+    if (!pseudo || pseudo === 'Joueur') return;
+    try {
+        const lb = JSON.parse(localStorage.getItem('chess_leaderboard') || '[]');
+        const idx = lb.findIndex(p => p.pseudo === pseudo);
+        if (idx >= 0) {
+            lb[idx].mdmelo = mdmelo;
+            if (wins !== undefined) lb[idx].wins = wins;
+            lb[idx].date = Date.now();
+        } else {
+            lb.push({pseudo, mdmelo, wins: wins || 0, date: Date.now()});
+        }
+        localStorage.setItem('chess_leaderboard', JSON.stringify(lb));
+    } catch(e) {}
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 function updatePlayersBar() {
     const bar = document.getElementById('players-bar');
@@ -736,7 +789,7 @@ function updatePlayersBar() {
     document.getElementById('name-b').textContent=(myColor==='b'?myPseudo:oppPseudo)||'—';
     // remove stale badges then rebuild
     ['chip-w','chip-b'].forEach(id => {
-        document.getElementById(id).querySelectorAll('.chip-wins,.chip-admin').forEach(el=>el.remove());
+        document.getElementById(id).querySelectorAll('.chip-wins,.chip-admin,.chip-mdmelo').forEach(el=>el.remove());
     });
     const myChip = document.getElementById(myColor==='w'?'chip-w':'chip-b');
     const wins = parseInt(localStorage.getItem('chess_wins')||'0');
@@ -744,6 +797,20 @@ function updatePlayersBar() {
         const wb = document.createElement('span');
         wb.className='chip-wins'; wb.textContent=`🏆${wins}`;
         myChip.appendChild(wb);
+    }
+    const myMdmelo = parseInt(localStorage.getItem('chess_mdmelo') || '1000');
+    const myRank = getMdmeloRank(myMdmelo);
+    const mb = document.createElement('span');
+    mb.className='chip-mdmelo'; mb.title=myRank.name;
+    mb.textContent=`${myRank.emoji}${myMdmelo}`;
+    myChip.appendChild(mb);
+    if (oppMdmelo !== null) {
+        const oppChip = document.getElementById(myColor==='w'?'chip-b':'chip-w');
+        const oppRank = getMdmeloRank(oppMdmelo);
+        const omb = document.createElement('span');
+        omb.className='chip-mdmelo'; omb.title=oppRank.name;
+        omb.textContent=`${oppRank.emoji}${oppMdmelo}`;
+        oppChip.appendChild(omb);
     }
     if (adminMode) {
         const ab = document.createElement('span');
@@ -953,7 +1020,7 @@ function startLocal() {
 function backToLobby() {
     clearTimeout(mmTimeout);
     if (peer) { peer.destroy(); peer=null; }
-    conn=null; isOnline=false; oppPseudo=''; amHost=false; oppSkinId=null;
+    conn=null; isOnline=false; oppPseudo=''; amHost=false; oppSkinId=null; oppMdmelo=null;
     document.getElementById('code-display').style.display='none';
     showMMSearching(false);
     setLobbyStatus(''); showLobby();
@@ -1058,6 +1125,8 @@ function handleNetData(data) {
         opponentQuitReceived=true; showOpponentQuit(data.pseudo); gameOver=true; render();
     } else if (data.type==='hello') {
         oppPseudo=data.pseudo;
+        oppMdmelo=data.mdmelo ?? null;
+        if (data.pseudo && data.pseudo !== 'Joueur' && data.mdmelo != null) saveToLeaderboard(data.pseudo, data.mdmelo);
         document.getElementById('sp-opp-name').textContent=oppPseudo;
         render();
     } else if (data.type==='game_start') {
@@ -1071,6 +1140,10 @@ function handleNetData(data) {
     } else if (data.type==='admin_clear') {
         board=Array(8).fill(null).map(()=>Array(8).fill(null));
         selected=null; validMoves=[]; statusMsg=''; render();
+    } else if (data.type==='admin_mdmelo') {
+        if (data.for==='me') localStorage.setItem('chess_mdmelo', String(data.val));
+        else oppMdmelo = data.val;
+        render();
     } else if (data.type==='skin_sync') {
         // Store opponent's skin choices keyed by the color they play (opposite of myColor)
         const oppCol = myColor==='w'?'b':'w';
@@ -1094,7 +1167,7 @@ function attachConn(c) {
 
 function startSetupPhase() {
     isOnline=true;
-    conn.send({type:'hello', pseudo:myPseudo});
+    conn.send({type:'hello', pseudo:myPseudo, mdmelo:parseInt(localStorage.getItem('chess_mdmelo')||'1000')});
     showSetup();
 }
 
@@ -1227,10 +1300,23 @@ function adminClearBoard() {
     render();
 }
 
+function adminSetMdmelo(target) {
+    if (target === 'me') {
+        const val = Math.max(0, parseInt(document.getElementById('admin-mdmelo-me').value) || 0);
+        localStorage.setItem('chess_mdmelo', String(val));
+        if (isOnline && conn) conn.send({type:'admin_mdmelo', for:'opp', val});
+    } else {
+        const val = Math.max(0, parseInt(document.getElementById('admin-mdmelo-opp').value) || 0);
+        oppMdmelo = val;
+        if (isOnline && conn) conn.send({type:'admin_mdmelo', for:'me', val});
+    }
+    render();
+}
+
 function promptAdminCode() {
     const input = prompt('Code admin :');
     if (input === null) return;
-    if (input === 'madmaxou29112011') activateAdmin();
+    if (input === 'mdm2011') activateAdmin();
     else alert('Code incorrect.');
 }
 
@@ -1238,6 +1324,8 @@ function activateAdmin() {
     adminMode = true;
     document.getElementById('admin-panel').classList.add('show');
     buildPalette();
+    document.getElementById('admin-mdmelo-me').value = parseInt(localStorage.getItem('chess_mdmelo') || '1000');
+    if (oppMdmelo !== null) document.getElementById('admin-mdmelo-opp').value = oppMdmelo;
     updatePlayersBar();
     // Brief flash notification
     const old = document.getElementById('status').textContent;
@@ -1247,7 +1335,7 @@ function activateAdmin() {
 
 // Secret code detection
 let _codeBuffer = '';
-const _SECRET = 'madmaxou29112011';
+const _SECRET = 'mdm2011';
 document.addEventListener('keydown', e => {
     if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
     _codeBuffer += e.key;
