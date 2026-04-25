@@ -324,6 +324,49 @@
         body.mobile-mode #lobby h1 { font-size: 1.5rem; }
         body.mobile-mode #lobby > p { font-size: 0.82rem; }
 
+        /* ── Bot setup modal ── */
+        #bot-modal {
+            display:none; position:fixed; inset:0;
+            background:rgba(0,0,0,0.75); z-index:200;
+            align-items:center; justify-content:center; padding:1rem;
+        }
+        #bot-modal.show { display:flex; }
+        #bot-box {
+            background:#1a1a2e; border:1px solid rgba(255,255,255,0.14);
+            border-radius:20px; padding:1.5rem 1.3rem;
+            max-width:380px; width:100%;
+            display:flex; flex-direction:column; gap:1rem; color:#eee;
+            font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+        }
+        #bot-box h2 { font-size:1.2rem; text-align:center; margin:0; }
+        .bot-section {
+            background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
+            border-radius:12px; padding:1rem; display:flex; flex-direction:column; gap:0.75rem;
+        }
+        .bot-section > label { font-size:0.9rem; font-weight:700; opacity:0.9; }
+        .bot-strength-row { display:flex; align-items:center; gap:0.8rem; }
+        #bot-strength-slider {
+            flex:1; accent-color:#a29bfe; cursor:pointer;
+            height:6px; border-radius:3px;
+        }
+        .bot-strength-name { font-size:1rem; font-weight:700; color:#a29bfe; min-width:7rem; text-align:right; }
+        .bot-strength-marks {
+            display:flex; justify-content:space-between;
+            font-size:0.68rem; opacity:0.38; padding:0 2px;
+        }
+        .bot-color-row { display:flex; gap:0.5rem; }
+        .bot-color-btn {
+            flex:1; padding:0.65rem 0.3rem; border-radius:10px;
+            background:rgba(255,255,255,0.07); border:2px solid rgba(255,255,255,0.1);
+            color:#eee; cursor:pointer;
+            display:flex; flex-direction:column; align-items:center; gap:0.2rem;
+            transition:background 0.15s, border-color 0.15s;
+        }
+        .bot-color-btn:hover { background:rgba(255,255,255,0.14); }
+        .bot-color-btn.active { background:rgba(162,155,254,0.15); border-color:rgba(162,155,254,0.55); }
+        .bci { font-size:1.5rem; line-height:1; }
+        .bcl { font-size:0.72rem; opacity:0.75; font-weight:600; }
+
         /* ── Matchmaking ── */
         .mm-searching {
             display: flex; flex-direction: column; align-items: center;
@@ -527,6 +570,41 @@
     </div>
 </div>
 
+<!-- ── BOT SETUP MODAL ── -->
+<div id="bot-modal">
+    <div id="bot-box">
+        <h2>🤖 Jouer contre le bot</h2>
+        <div class="bot-section">
+            <label>⚡ Force du bot</label>
+            <div class="bot-strength-row">
+                <input type="range" id="bot-strength-slider" min="1" max="4" value="2" step="1"
+                    oninput="updateBotStrength(this.value)">
+                <span class="bot-strength-name" id="bot-strength-name">🟢 Facile</span>
+            </div>
+            <div class="bot-strength-marks">
+                <span>Aléatoire</span><span>Facile</span><span>Moyen</span><span>Fort</span>
+            </div>
+        </div>
+        <div class="bot-section">
+            <label>🎨 Votre couleur</label>
+            <div class="bot-color-row">
+                <button class="bot-color-btn active" id="bcc-w" onclick="setBotColor('w')">
+                    <span class="bci">♙</span><span class="bcl">Blancs</span>
+                </button>
+                <button class="bot-color-btn" id="bcc-r" onclick="setBotColor('random')">
+                    <span class="bci">🎲</span><span class="bcl">Aléatoire</span>
+                </button>
+                <button class="bot-color-btn" id="bcc-b" onclick="setBotColor('b')">
+                    <span class="bci">♟</span><span class="bcl">Noirs</span>
+                </button>
+            </div>
+        </div>
+        <button class="btn-green" style="width:100%;justify-content:center;font-size:1rem;padding:0.7rem"
+            onclick="launchBotGame()">▶ Jouer</button>
+        <button class="btn-gray" style="width:100%;justify-content:center" onclick="closeBotModal()">Annuler</button>
+    </div>
+</div>
+
 <script src="https://unpkg.com/peerjs@1/dist/peerjs.min.js"></script>
 <script>
 // ── Symbols ───────────────────────────────────────────────────────────────────
@@ -594,6 +672,7 @@ function getSkin(col) {
 let board, turn, selected, validMoves, ep, cr, gameOver, statusMsg;
 let peer, conn, myColor, isOnline = false;
 let isVsBot = false, botColor = 'b';
+let botDepth = 1, botColorChoice = 'w';
 let myPseudo = '', oppPseudo = ''; let oppMdmelo = null;
 let opponentQuitReceived = false;
 let myVote = null, oppVote = null; // 'w' | 'b' | 'random'
@@ -1517,30 +1596,35 @@ function minimax(b, depth, alpha, beta, maximizing, epT, rights) {
     }
 }
 
+const BOT_LEVEL_NAMES = ['🎲 Aléatoire', '🟢 Facile', '🟡 Moyen', '🔴 Fort'];
+
 function botPlay() {
     if (!isVsBot || gameOver || turn !== botColor) return;
     document.getElementById('status').textContent = '🤖 Réfléchit…';
     setTimeout(() => {
         const moves = getAllMoves(board, botColor, ep, cr);
         if (!moves.length) return;
-        const maximizing = botColor === 'w';
-        let bestScore = maximizing ? -Infinity : Infinity;
         let bestMove = null;
-        // shuffle for variety at equal scores
-        for (let i = moves.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [moves[i], moves[j]] = [moves[j], moves[i]];
-        }
-        for (const {fr, fc, m} of moves) {
-            const nb = copyB(board);
-            const newEp = (nb[fr][fc]?.t==='p' && Math.abs(m.r-fr)===2) ? {r:(fr+m.r)/2,c:fc} : null;
-            const newCr = {w:{k:cr.w.k,q:cr.w.q}, b:{k:cr.b.k,q:cr.b.q}};
-            if (nb[fr][fc]?.t==='k') newCr[botColor]={k:false,q:false};
-            if (nb[fr][fc]?.t==='r'){if(fc===7)newCr[botColor].k=false;if(fc===0)newCr[botColor].q=false;}
-            applyMv(nb, fr, fc, m);
-            const score = minimax(nb, 2, -Infinity, Infinity, !maximizing, newEp, newCr);
-            if (maximizing ? score > bestScore : score < bestScore) {
-                bestScore = score; bestMove = {fr, fc, m};
+        if (botDepth === 0) {
+            bestMove = moves[Math.floor(Math.random() * moves.length)];
+        } else {
+            const maximizing = botColor === 'w';
+            let bestScore = maximizing ? -Infinity : Infinity;
+            for (let i = moves.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [moves[i], moves[j]] = [moves[j], moves[i]];
+            }
+            for (const {fr, fc, m} of moves) {
+                const nb = copyB(board);
+                const newEp = (nb[fr][fc]?.t==='p' && Math.abs(m.r-fr)===2) ? {r:(fr+m.r)/2,c:fc} : null;
+                const newCr = {w:{k:cr.w.k,q:cr.w.q}, b:{k:cr.b.k,q:cr.b.q}};
+                if (nb[fr][fc]?.t==='k') newCr[botColor]={k:false,q:false};
+                if (nb[fr][fc]?.t==='r'){if(fc===7)newCr[botColor].k=false;if(fc===0)newCr[botColor].q=false;}
+                applyMv(nb, fr, fc, m);
+                const score = minimax(nb, botDepth - 1, -Infinity, Infinity, !maximizing, newEp, newCr);
+                if (maximizing ? score > bestScore : score < bestScore) {
+                    bestScore = score; bestMove = {fr, fc, m};
+                }
             }
         }
         if (bestMove) { doMove(bestMove.fr, bestMove.fc, bestMove.m); selected=null; validMoves=[]; render(); }
@@ -1548,9 +1632,36 @@ function botPlay() {
 }
 
 function startVsBot() {
+    document.getElementById('bot-strength-slider').value = '2';
+    updateBotStrength(2);
+    setBotColor('w');
+    document.getElementById('bot-modal').classList.add('show');
+}
+
+function updateBotStrength(val) {
+    val = parseInt(val);
+    botDepth = val - 1;
+    document.getElementById('bot-strength-name').textContent = BOT_LEVEL_NAMES[val - 1];
+}
+
+function setBotColor(c) {
+    botColorChoice = c;
+    ['w','r','b'].forEach(x => document.getElementById('bcc-'+x).classList.toggle('active', x === c));
+}
+
+function closeBotModal() {
+    document.getElementById('bot-modal').classList.remove('show');
+}
+
+function launchBotGame() {
+    closeBotModal();
+    const col = botColorChoice === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : botColorChoice;
     myPseudo = getStoredPseudo() || 'Joueur';
-    isOnline = false; isVsBot = true; botColor = 'b'; myColor = 'w'; oppPseudo = '🤖 Bot';
+    isOnline = false; isVsBot = true;
+    myColor = col; botColor = col === 'w' ? 'b' : 'w';
+    oppPseudo = '🤖 Bot';
     initBoard(); showGame(); setConnInfo(''); render();
+    if (myColor !== 'w') setTimeout(botPlay, 600);
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
