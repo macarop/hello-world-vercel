@@ -324,6 +324,47 @@
         body.mobile-mode #lobby h1 { font-size: 1.5rem; }
         body.mobile-mode #lobby > p { font-size: 0.82rem; }
 
+        /* ── Notation panel ── */
+        #notation-panel {
+            position: fixed; left: 0; top: 50%; transform: translateY(-50%);
+            background: rgba(14,14,26,0.96); backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.1); border-left: none;
+            border-radius: 0 12px 12px 0;
+            width: 155px; max-height: 68vh;
+            display: none; flex-direction: column;
+            z-index: 48; box-shadow: 4px 0 20px rgba(0,0,0,0.4);
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        #notation-panel.show { display: flex; }
+        .np-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.45rem 0.5rem 0.45rem 0.7rem;
+            background: rgba(255,255,255,0.06);
+            border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;
+        }
+        .np-header span { font-size: 0.78rem; font-weight: 700; color: #eee; }
+        .np-collapse { background:none; border:none; color:rgba(255,255,255,0.4); cursor:pointer; font-size:0.9rem; padding:0; line-height:1; }
+        .np-collapse:hover { color:#fff; }
+        .np-opening {
+            padding: 0.35rem 0.55rem; font-size: 0.71rem; color: #ffd700;
+            font-weight: 700; text-align: center; line-height: 1.35;
+            min-height: 2rem; display: flex; align-items: center; justify-content: center;
+            border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;
+        }
+        .np-moves { overflow-y: auto; flex: 1; padding: 0.25rem 0; }
+        .np-row {
+            display: grid; grid-template-columns: 1.6rem 1fr 1fr;
+            gap: 0.1rem; padding: 0.13rem 0.45rem;
+            font-family: monospace; font-size: 0.72rem;
+        }
+        .np-row:nth-child(even) { background: rgba(255,255,255,0.03); }
+        .np-row.np-latest { background: rgba(162,155,254,0.13); }
+        .np-num { color: rgba(255,255,255,0.3); font-size: 0.67rem; }
+        .np-w { color: #fff; }
+        .np-b { color: #a29bfe; }
+        body.mobile-mode #notation-panel { width: 128px; }
+        body.mobile-mode .np-row { font-size: 0.67rem; padding: 0.1rem 0.35rem; }
+
         /* ── Bot setup modal ── */
         #bot-modal {
             display:none; position:fixed; inset:0;
@@ -482,6 +523,7 @@
         <button class="btn-red" onclick="confirmQuit()">Quitter la partie</button>
         <button class="btn-blue" id="btn-restart">Nouvelle partie</button>
         <button class="btn-gray" onclick="toggleSkinPanel()">🎨 Skin</button>
+        <button class="btn-gray" onclick="toggleNotationPanel()" title="Coups joués">📋</button>
     </div>
     <div id="skin-panel">
         <div class="sp-header">
@@ -568,6 +610,16 @@
             <button class="btn-red" onclick="doQuit()">Quitter</button>
         </div>
     </div>
+</div>
+
+<!-- ── NOTATION PANEL ── -->
+<div id="notation-panel">
+    <div class="np-header">
+        <span>📋 Coups</span>
+        <button class="np-collapse" onclick="toggleNotationPanel()" title="Fermer">✕</button>
+    </div>
+    <div class="np-opening" id="np-opening">—</div>
+    <div class="np-moves" id="np-moves"></div>
 </div>
 
 <!-- ── BOT SETUP MODAL ── -->
@@ -673,6 +725,7 @@ let board, turn, selected, validMoves, ep, cr, gameOver, statusMsg;
 let peer, conn, myColor, isOnline = false;
 let isVsBot = false, botColor = 'b';
 let botDepth = 1, botColorChoice = 'w';
+let moveHistory = [];
 let myPseudo = '', oppPseudo = ''; let oppMdmelo = null;
 let opponentQuitReceived = false;
 let myVote = null, oppVote = null; // 'w' | 'b' | 'random'
@@ -698,6 +751,7 @@ function initBoard() {
     turn='w'; selected=null; validMoves=[];
     ep=null; cr={w:{k:true,q:true},b:{k:true,q:true}};
     gameOver=false; statusMsg='';
+    moveHistory = []; updateNotationPanel();
 }
 
 function pseudoLegal(b, r, c, epT) {
@@ -823,6 +877,9 @@ function onClick(r, c) {
 }
 
 function doMove(fr, fc, m, fromNet=false) {
+    const san = generateSAN(board, fr, fc, m, ep, cr);
+    const coords = FILE_CHARS[fc] + RANK_CHARS[fr] + FILE_CHARS[m.c] + RANK_CHARS[m.r];
+    const movedColor = board[fr][fc]?.col || turn;
     const p=board[fr][fc];
     ep=(p.t==='p'&&Math.abs(m.r-fr)===2)?{r:(fr+m.r)/2,c:fc}:null;
     if(p.t==='k') cr[p.col]={k:false,q:false};
@@ -839,6 +896,8 @@ function doMove(fr, fc, m, fromNet=false) {
     } else {
         statusMsg=inCheck(board,turn)?'Échec !':'';
     }
+    moveHistory.push({san, coords, color: movedColor});
+    updateNotationPanel();
     if (!fromNet&&isOnline&&conn) conn.send({type:'move',fr,fc,m});
     if (gameOver) setTimeout(showGameOver, 400);
     else if (!fromNet && isVsBot && turn === botColor) setTimeout(botPlay, 350);
@@ -1140,12 +1199,14 @@ function showLobby() {
     document.getElementById('quit-overlay').classList.remove('show');
     document.getElementById('gameover-overlay').classList.remove('show');
     document.getElementById('admin-trigger').classList.remove('visible');
+    document.getElementById('notation-panel').classList.remove('show');
 }
 function showGame() {
     document.getElementById('lobby').style.display='none';
     document.getElementById('setup').style.display='none';
     document.getElementById('game').style.display='flex';
     document.getElementById('admin-trigger').classList.add('visible');
+    document.getElementById('notation-panel').classList.add('show');
 }
 function setLobbyStatus(msg) { document.getElementById('lobby-status').textContent=msg; }
 function setConnInfo(html)   { document.getElementById('conn-info').innerHTML=html; }
@@ -1525,6 +1586,113 @@ function toggleHideMySkin(cb) {
 function toggleHideOppSkin(cb) {
     localStorage.setItem('chess_hide_opp_skin', cb.checked ? '1' : '0');
     render();
+}
+
+// ── Algebraic notation & opening detection ────────────────────────────────────
+const PIECE_FR   = {k:'R', q:'D', r:'T', b:'F', n:'C'};
+const FILE_CHARS = 'abcdefgh';
+const RANK_CHARS = '87654321';
+
+const OPENINGS = [
+    {name:'Sicilienne Najdorf', seq:['e2e4','c7c5','g1f3','d7d6','d2d4','c5d4','f3d4','g8f6','b1c3','a7a5']},
+    {name:'Sicilienne Dragon',  seq:['e2e4','c7c5','g1f3','d7d6','d2d4','c5d4','f3d4','g8f6','b1c3','g7g6']},
+    {name:'Gambit Evans',       seq:['e2e4','e7e5','g1f3','b8c6','f1c4','f8c5','b2b4']},
+    {name:'Deux cavaliers',     seq:['e2e4','e7e5','g1f3','b8c6','f1c4','g8f6']},
+    {name:'Partie italienne',   seq:['e2e4','e7e5','g1f3','b8c6','f1c4']},
+    {name:'Ruy Lopez',          seq:['e2e4','e7e5','g1f3','b8c6','f1b5']},
+    {name:'Gambit du Roi',      seq:['e2e4','e7e5','f2f4']},
+    {name:'Partie du Roi',      seq:['e2e4','e7e5']},
+    {name:'Sicilienne',         seq:['e2e4','c7c5']},
+    {name:'Défense française',  seq:['e2e4','e7e6']},
+    {name:'Caro-Kann',          seq:['e2e4','c7c6']},
+    {name:'Défense Pirc',       seq:['e2e4','d7d6']},
+    {name:'Scandinave',         seq:['e2e4','d7d5']},
+    {name:'Déf. Alekhine',      seq:['e2e4','g8f6']},
+    {name:'GDA accepté',        seq:['d2d4','d7d5','c2c4','d5c4']},
+    {name:'Déf. slave',         seq:['d2d4','d7d5','c2c4','c7c6']},
+    {name:'Gambit Dame',        seq:['d2d4','d7d5','c2c4']},
+    {name:'Nimzo-indienne',     seq:['d2d4','g8f6','c2c4','e7e6','b1c3','f8b4']},
+    {name:'Indienne du Roi',    seq:['d2d4','g8f6','c2c4','g7g6']},
+    {name:'London',             seq:['d2d4','d7d5','g1f3','g8f6','c1f4']},
+    {name:'Hollandaise',        seq:['d2d4','f7f5']},
+    {name:'Anglaise',           seq:['c2c4']},
+    {name:'Réti',               seq:['g1f3']},
+    {name:'Bird',               seq:['f2f4']},
+    {name:'Larsen',             seq:['b2b3']},
+    {name:'Polonais',           seq:['b2b4']},
+];
+
+function generateSAN(b, fr, fc, m, epT, rights) {
+    const piece = b[fr][fc];
+    if (!piece) return '?';
+    if (m.castle === 'k') return 'O-O';
+    if (m.castle === 'q') return 'O-O-O';
+    const toFile=FILE_CHARS[m.c], toRank=RANK_CHARS[m.r];
+    const fromFile=FILE_CHARS[fc], fromRank=RANK_CHARS[fr];
+    const isCapture = !!(b[m.r][m.c] || m.ep);
+    let san = '';
+    if (piece.t !== 'p') {
+        san += PIECE_FR[piece.t];
+        const ambig = [];
+        for (let r = 0; r < 8; r++)
+            for (let c = 0; c < 8; c++)
+                if (!(r===fr&&c===fc) && b[r][c]?.t===piece.t && b[r][c]?.col===piece.col)
+                    if (legalMoves(b,r,c,epT,rights).some(mv=>mv.r===m.r&&mv.c===m.c))
+                        ambig.push({r,c});
+        if (ambig.length) {
+            const sf=ambig.some(p=>p.c===fc), sr=ambig.some(p=>p.r===fr);
+            if (!sf) san+=fromFile; else if (!sr) san+=fromRank; else san+=fromFile+fromRank;
+        }
+    } else {
+        if (isCapture) san += fromFile;
+    }
+    if (isCapture) san += 'x';
+    san += toFile + toRank;
+    if (piece.t==='p'&&(m.r===0||m.r===7)) san += '=D';
+    // check / checkmate
+    const nb=copyB(b); applyMv(nb,fr,fc,m);
+    const oppCol=piece.col==='w'?'b':'w';
+    const newEp=(piece.t==='p'&&Math.abs(m.r-fr)===2)?{r:(fr+m.r)/2,c:fc}:null;
+    const newCr={w:{k:rights.w.k,q:rights.w.q},b:{k:rights.b.k,q:rights.b.q}};
+    if(piece.t==='k')newCr[piece.col]={k:false,q:false};
+    if(piece.t==='r'){if(fc===7)newCr[piece.col].k=false;if(fc===0)newCr[piece.col].q=false;}
+    if(m.r===0&&m.c===7)newCr.b.k=false; if(m.r===0&&m.c===0)newCr.b.q=false;
+    if(m.r===7&&m.c===7)newCr.w.k=false; if(m.r===7&&m.c===0)newCr.w.q=false;
+    if (inCheck(nb,oppCol)) san += anyLegal(nb,oppCol,newEp,newCr) ? '+' : '#';
+    return san;
+}
+
+function detectOpening() {
+    const coords = moveHistory.map(m => m.coords);
+    let best = null;
+    for (const op of OPENINGS)
+        if (op.seq.length <= coords.length && op.seq.every((mv,i)=>mv===coords[i]))
+            if (!best || op.seq.length > best.seq.length) best = op;
+    return best ? best.name : '—';
+}
+
+function updateNotationPanel() {
+    const list = document.getElementById('np-moves');
+    const opening = document.getElementById('np-opening');
+    if (!list || !opening) return;
+    opening.textContent = detectOpening();
+    list.innerHTML = '';
+    for (let i = 0; i < moveHistory.length; i += 2) {
+        const wm = moveHistory[i], bm = moveHistory[i+1];
+        const isLast = i + 2 >= moveHistory.length;
+        const row = document.createElement('div');
+        row.className = 'np-row' + (isLast ? ' np-latest' : '');
+        row.innerHTML =
+            `<span class="np-num">${i/2+1}.</span>` +
+            `<span class="np-w">${wm.san}</span>` +
+            `<span class="np-b">${bm ? bm.san : ''}</span>`;
+        list.appendChild(row);
+    }
+    list.scrollTop = list.scrollHeight;
+}
+
+function toggleNotationPanel() {
+    document.getElementById('notation-panel').classList.toggle('show');
 }
 
 // ── Controls ──────────────────────────────────────────────────────────────────
