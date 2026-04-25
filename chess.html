@@ -132,6 +132,9 @@
             position: absolute; pointer-events: none;
         }
         .valid-capture { box-shadow: inset 0 0 0 5px rgba(0,0,0,0.25); }
+        .premove-select { background: rgba(255,200,0,0.55) !important; }
+        .premove-from   { background: rgba(255,140,0,0.60) !important; }
+        .premove-to     { background: rgba(255,140,0,0.35) !important; box-shadow: inset 0 0 0 4px rgba(255,140,0,0.7); }
         .coord { position: absolute; font-size: 10px; font-weight: 700; pointer-events: none; }
         .coord-rank { bottom: 2px; left: 3px; }
         .coord-file { top: 2px; right: 3px; }
@@ -326,14 +329,20 @@
 
         /* ── Notation panel ── */
         #notation-panel {
-            position: fixed; left: 0; top: 50%; transform: translateY(-50%);
+            position: fixed; right: 0; left: auto; top: 50%; transform: translateY(-50%);
             background: rgba(14,14,26,0.96); backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,0.1); border-left: none;
-            border-radius: 0 12px 12px 0;
+            border: 1px solid rgba(255,255,255,0.1); border-right: none;
+            border-radius: 12px 0 0 12px;
             width: 155px; max-height: 68vh;
             display: none; flex-direction: column;
-            z-index: 48; box-shadow: 4px 0 20px rgba(0,0,0,0.4);
+            z-index: 48; box-shadow: -4px 0 20px rgba(0,0,0,0.4);
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        #notation-panel.np-left {
+            right: auto; left: 0;
+            border-right: 1px solid rgba(255,255,255,0.1); border-left: none;
+            border-radius: 0 12px 12px 0;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.4);
         }
         #notation-panel.show { display: flex; }
         .np-header {
@@ -616,6 +625,7 @@
 <!-- ── NOTATION PANEL ── -->
 <div id="notation-panel">
     <div class="np-header">
+        <button class="np-collapse" id="np-side-btn" onclick="toggleNotationSide()" title="Déplacer">◀</button>
         <span>📋 Coups</span>
         <button class="np-collapse" onclick="toggleNotationPanel()" title="Fermer">✕</button>
     </div>
@@ -725,6 +735,8 @@ let isVsBot = false, botColor = 'b';
 let botDepth = 1, botColorChoice = 'w';
 let moveHistory = [];
 let boardFlipped = false;
+let premove = null, premoveSelected = null;
+let notationSide = localStorage.getItem('chess_notation_side') || 'right';
 let myPseudo = '', oppPseudo = ''; let oppMdmelo = null;
 let opponentQuitReceived = false;
 let myVote = null, oppVote = null; // 'w' | 'b' | 'random'
@@ -751,6 +763,7 @@ function initBoard() {
     ep=null; cr={w:{k:true,q:true},b:{k:true,q:true}};
     gameOver=false; statusMsg='';
     moveHistory = []; updateNotationPanel();
+    premove = null; premoveSelected = null;
 }
 
 function pseudoLegal(b, r, c, epT) {
@@ -849,8 +862,8 @@ function onClick(r, c) {
         render(); return;
     }
     if (gameOver && !adminMode) return;
-    if (isOnline && turn!==myColor && !adminMode) return;
-    if (isVsBot && turn===botColor && !adminMode) return;
+    const oppTurn = (isOnline && turn!==myColor) || (isVsBot && turn===botColor);
+    if (oppTurn && !adminMode) { handlePremoveClick(r, c); return; }
     if (selected) {
         if (adminMode && adminIllegal) {
             // Move anywhere, no rules
@@ -1037,6 +1050,9 @@ function render() {
             const vm=validMoves.find(m=>m.r===r&&m.c===c);
             if(vm) sq.classList.add(board[r][c]||vm.ep?'valid-capture':'valid-move');
             if(ck?.r===r&&ck?.c===c) sq.classList.add('in-check');
+            if(premoveSelected?.r===r&&premoveSelected?.c===c) sq.classList.add('premove-select');
+            if(premove?.fr===r&&premove?.fc===c) sq.classList.add('premove-from');
+            if(premove?.tr===r&&premove?.tc===c) sq.classList.add('premove-to');
             if(ci===0){const s=document.createElement('span');s.className='coord coord-rank';s.textContent=flip?ri+1:8-r;sq.appendChild(s);}
             if(ri===7){const s=document.createElement('span');s.className='coord coord-file';s.textContent=(flip?'hgfedcba':'abcdefgh')[ci];sq.appendChild(s);}
             if(board[r][c]){
@@ -1222,6 +1238,7 @@ function backToLobby() {
     clearTimeout(mmTimeout);
     if (peer) { peer.destroy(); peer=null; }
     conn=null; isOnline=false; isVsBot=false; oppPseudo=''; amHost=false; oppSkinId=null; oppMdmelo=null;
+    premove=null; premoveSelected=null;
     document.getElementById('code-display').style.display='none';
     showMMSearching(false);
     setLobbyStatus(''); showLobby();
@@ -1314,7 +1331,7 @@ function generateCode() {
 
 function handleNetData(data) {
     if (data.type==='move') {
-        doMove(data.fr,data.fc,data.m,true); selected=null; validMoves=[]; render();
+        doMove(data.fr,data.fc,data.m,true); selected=null; validMoves=[]; render(); tryExecutePremove();
     } else if (data.type==='restart') {
         myVote=null; oppVote=null; showSetup();
     } else if (data.type==='pseudo') {
@@ -1698,6 +1715,50 @@ function toggleNotationPanel() {
 
 function flipBoard() { boardFlipped = !boardFlipped; render(); }
 
+// ── Premove ───────────────────────────────────────────────────────────────────
+function handlePremoveClick(r, c) {
+    const p = board[r][c];
+    if (premoveSelected) {
+        if (premoveSelected.r === r && premoveSelected.c === c) {
+            premoveSelected = null;
+        } else if (p?.col === myColor) {
+            premoveSelected = {r, c}; premove = null;
+        } else {
+            premove = {fr: premoveSelected.r, fc: premoveSelected.c, tr: r, tc: c};
+            premoveSelected = null;
+        }
+    } else {
+        if (p?.col === myColor) { premoveSelected = {r, c}; premove = null; }
+        else { premove = null; }
+    }
+    render();
+}
+
+function tryExecutePremove() {
+    if (!premove || gameOver) return;
+    const {fr, fc, tr, tc} = premove;
+    premove = null; premoveSelected = null;
+    if (!board[fr][fc] || board[fr][fc].col !== myColor) { render(); return; }
+    const moves = legalMoves(board, fr, fc, ep, cr);
+    const m = moves.find(mv => mv.r === tr && mv.c === tc);
+    if (m) { doMove(fr, fc, m); selected = null; validMoves = []; render(); }
+    else render();
+}
+
+// ── Notation side ─────────────────────────────────────────────────────────────
+function applyNotationSide() {
+    const panel = document.getElementById('notation-panel');
+    const btn   = document.getElementById('np-side-btn');
+    if (!panel) return;
+    panel.classList.toggle('np-left', notationSide === 'left');
+    if (btn) btn.textContent = notationSide === 'right' ? '◀' : '▶';
+}
+function toggleNotationSide() {
+    notationSide = notationSide === 'right' ? 'left' : 'right';
+    localStorage.setItem('chess_notation_side', notationSide);
+    applyNotationSide();
+}
+
 // ── Controls ──────────────────────────────────────────────────────────────────
 document.getElementById('btn-restart').addEventListener('click', ()=>{
     myVote=null; oppVote=null;
@@ -1798,7 +1859,7 @@ function botPlay() {
                 }
             }
         }
-        if (bestMove) { doMove(bestMove.fr, bestMove.fc, bestMove.m); selected=null; validMoves=[]; render(); }
+        if (bestMove) { doMove(bestMove.fr, bestMove.fc, bestMove.m); selected=null; validMoves=[]; render(); tryExecutePremove(); }
     }, 0);
 }
 
@@ -1844,6 +1905,7 @@ if (localStorage.getItem('chess_mobile_mode') === null) {
 }
 if (localStorage.getItem('chess_mobile_mode') === '1') document.body.classList.add('mobile-mode');
 myPseudo=getStoredPseudo();
+applyNotationSide();
 </script>
 </body>
 </html>
