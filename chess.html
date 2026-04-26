@@ -440,7 +440,8 @@
     <div class="card">
         <h2>Créer une partie en ligne</h2>
         <small>Partage le code à ton adversaire.</small>
-        <button class="btn-green" onclick="createGame()">Créer</button>
+        <button class="btn-green" id="btn-create" onclick="createGame()">Créer</button>
+        <div id="create-status" style="font-size:0.82rem;min-height:1rem;opacity:0.7;text-align:center"></div>
         <div id="code-display">
             <div id="code-text"></div>
             <div id="code-hint">Partage ce code à ton adversaire</div>
@@ -448,8 +449,9 @@
     </div>
     <div class="card">
         <h2>Rejoindre une partie</h2>
-        <input type="text" id="code-input" class="code-input" placeholder="Code à 6 caractères" maxlength="6">
-        <button class="btn-blue" onclick="joinGame()">Rejoindre</button>
+        <input type="text" id="code-input" class="code-input" placeholder="Code à 6 caractères" maxlength="6" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+        <button class="btn-blue" id="btn-join" onclick="joinGame()">Rejoindre</button>
+        <div id="join-status" style="font-size:0.82rem;min-height:1rem;opacity:0.7;text-align:center"></div>
     </div>
     <div class="card" id="mm-card">
         <h2>Jouer contre un inconnu</h2>
@@ -462,6 +464,7 @@
             <p id="mm-status">Recherche d'un adversaire…</p>
             <button class="btn-gray" onclick="cancelMatchmaking()">Annuler</button>
         </div>
+        <div id="mm-error" style="font-size:0.82rem;color:#e74c3c;text-align:center;display:none"></div>
     </div>
     <div class="card">
         <button class="btn-gray" style="width:100%;justify-content:center" onclick="startLocal()">Jouer en local (même écran)</button>
@@ -665,7 +668,6 @@
     </div>
 </div>
 
-<script src="https://unpkg.com/peerjs@1/dist/peerjs.min.js"></script>
 <script>
 // ── Symbols ───────────────────────────────────────────────────────────────────
 const SYM = { k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' };
@@ -730,7 +732,7 @@ function getSkin(col) {
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let board, turn, selected, validMoves, ep, cr, gameOver, statusMsg;
-let peer, conn, myColor, isOnline = false;
+let conn, myColor, isOnline = false;
 let isVsBot = false, botColor = 'b';
 let botDepth = 1, botColorChoice = 'w';
 let moveHistory = [];
@@ -919,7 +921,7 @@ function showGameOver() {
     const isPat = statusMsg.includes('Pat');
     document.getElementById('gameover-trophy').textContent = isPat ? '🤝' : '🏆';
     document.getElementById('gameover-msg').textContent = statusMsg;
-    if (isOnline) {
+    if (isOnline || isVsBot) {
         const iWon = (turn==='b'&&myColor==='w') || (turn==='w'&&myColor==='b');
         const inc = k => localStorage.setItem(k, parseInt(localStorage.getItem(k)||'0') + 1);
         inc('chess_games_played');
@@ -975,6 +977,27 @@ function saveToLeaderboard(pseudo, mdmelo, wins) {
             lb[idx].date = Date.now();
         } else {
             lb.push({pseudo, mdmelo, wins: wins || 0, date: Date.now()});
+        }
+        localStorage.setItem('chess_leaderboard', JSON.stringify(lb));
+    } catch(e) {}
+}
+
+function mergeLeaderboard(remoteEntries) {
+    if (!Array.isArray(remoteEntries)) return;
+    try {
+        const lb = JSON.parse(localStorage.getItem('chess_leaderboard') || '[]');
+        for (const entry of remoteEntries) {
+            if (!entry.pseudo || entry.pseudo === 'Joueur') continue;
+            const idx = lb.findIndex(p => p.pseudo === entry.pseudo);
+            if (idx >= 0) {
+                if ((entry.date || 0) > (lb[idx].date || 0)) {
+                    lb[idx].mdmelo = entry.mdmelo;
+                    if (entry.wins !== undefined) lb[idx].wins = entry.wins;
+                    lb[idx].date = entry.date;
+                }
+            } else {
+                lb.push(entry);
+            }
         }
         localStorage.setItem('chess_leaderboard', JSON.stringify(lb));
     } catch(e) {}
@@ -1235,95 +1258,210 @@ function startLocal() {
 }
 
 function backToLobby() {
-    clearTimeout(mmTimeout);
-    if (peer) { peer.destroy(); peer=null; }
-    conn=null; isOnline=false; isVsBot=false; oppPseudo=''; amHost=false; oppSkinId=null; oppMdmelo=null;
+    destroyRTC();
+    isOnline=false; isVsBot=false; oppPseudo=''; amHost=false; oppSkinId=null; oppMdmelo=null;
     premove=null; premoveSelected=null;
     document.getElementById('code-display').style.display='none';
+    document.getElementById('mm-error').style.display='none';
+    const bc = document.getElementById('btn-create');
+    const bj = document.getElementById('btn-join');
+    if (bc) { bc.disabled=false; bc.textContent='Créer'; }
+    if (bj) { bj.disabled=false; bj.textContent='Rejoindre'; }
+    setCreateStatus(''); setJoinStatus('');
     showMMSearching(false);
     setLobbyStatus(''); showLobby();
 }
 
-// ── Matchmaking ───────────────────────────────────────────────────────────────
+// ── WebRTC Signaling via Firebase REST (aucun SDK) ───────────────────────────
+// Seule configuration nécessaire : l'URL de ta base Firebase Realtime Database
+// Instruction : console.firebase.google.com → ton projet → Build → Realtime Database
+//               → copie l'URL (ex: https://mon-projet-xxxx-default-rtdb.firebaseio.com)
+// La base doit être en mode "test" (lecture/écriture publiques)
+
+const FB_DB = 'https://chess-madmaxou-default-rtdb.europe-west1.firebasedatabase.app';
+
+const RTC_ICE = { iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
+]};
+
+let rtcPeer = null;
 let mmTimeout = null;
 
-function mmSlot() {
-    // Slot de 2 minutes : deux joueurs qui cherchent dans la même fenêtre se trouvent
-    return 'chess-mm-v1-' + Math.floor(Date.now() / 120000);
+function destroyRTC() {
+    clearTimeout(mmTimeout);
+    if (rtcPeer) { try { rtcPeer.close(); } catch(e){} rtcPeer = null; }
+    conn = null;
 }
 
-function setMMStatus(msg) {
-    document.getElementById('mm-status').textContent = msg;
+function fbReady() {
+    if (FB_DB.includes('XXXXX')) {
+        alert('⚙️ Configuration requise pour jouer en ligne.\n\n1. Va sur console.firebase.google.com\n2. Crée un projet gratuit\n3. Build → Realtime Database → Create database (mode test)\n4. Copie l\'URL de la base dans chess.html\n   (remplace XXXXX par ton ID de projet)');
+        return false;
+    }
+    return true;
 }
 
+async function fbGet(path) {
+    const r = await fetch(`${FB_DB}/${path}.json`);
+    if (!r.ok) throw new Error('fb-get-error');
+    return r.json();
+}
+async function fbSet(path, data) {
+    const r = await fetch(`${FB_DB}/${path}.json`, {
+        method: 'PUT', body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' }
+    });
+    if (!r.ok) throw new Error('fb-set-error');
+}
+async function fbDel(path) {
+    await fetch(`${FB_DB}/${path}.json`, { method: 'DELETE' }).catch(() => {});
+}
+// Claim atomique : écrit seulement si la valeur est null (via ETag)
+async function fbClaim(path, data) {
+    const r1 = await fetch(`${FB_DB}/${path}.json`, { headers: { 'X-Firebase-ETag': 'true' } });
+    const etag = r1.headers.get('ETag');
+    if ((await r1.json()) !== null) return false;
+    const r2 = await fetch(`${FB_DB}/${path}.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', 'if-match': etag },
+        body: JSON.stringify(data)
+    });
+    return r2.ok;
+}
+
+function makeConn(dc) {
+    const H = {};
+    dc.onmessage = e => { try { const d=JSON.parse(e.data); (H.data||[]).forEach(h=>h(d)); } catch(e){} };
+    dc.onclose   = () => (H.close||[]).forEach(h=>h());
+    dc.onerror   = e => (H.error||[]).forEach(h=>h(e));
+    return {
+        send: d => { if (dc.readyState==='open') dc.send(JSON.stringify(d)); },
+        on:  (ev,h) => { (H[ev]||(H[ev]=[])).push(h); }
+    };
+}
+
+async function gatherIce(pc) {
+    return new Promise(resolve => {
+        const ice = [];
+        if (pc.iceGatheringState === 'complete') { resolve(ice); return; }
+        const tid = setTimeout(() => resolve(ice), 4000);
+        pc.onicecandidate = e => {
+            if (e.candidate) ice.push(e.candidate.toJSON());
+            else { clearTimeout(tid); resolve(ice); }
+        };
+    });
+}
+
+async function signalAsHost(path, onReady) {
+    const pc = new RTCPeerConnection(RTC_ICE);
+    rtcPeer = pc;
+    const dc = pc.createDataChannel('chess', { ordered: true });
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    const ice = await gatherIce(pc);
+    await fbSet(path + '/host', { sdp: offer.sdp, ice, t: Date.now() });
+    onReady && onReady();
+    // Polling en arrière-plan pour la réponse du guest
+    (async () => {
+        const deadline = Date.now() + 300000;
+        while (rtcPeer === pc && Date.now() < deadline) {
+            try {
+                const d = await fbGet(path + '/guest');
+                if (d && d.sdp && rtcPeer === pc) {
+                    await pc.setRemoteDescription({ type: 'answer', sdp: d.sdp });
+                    (d.ice||[]).forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));
+                    return;
+                }
+            } catch(e) { /* continue */ }
+            await new Promise(r => setTimeout(r, 1500));
+        }
+    })();
+    return new Promise((resolve, reject) => {
+        dc.onopen = () => { if (rtcPeer !== pc) return; resolve(makeConn(dc)); };
+        dc.onerror = () => reject(new Error('datachannel'));
+    });
+}
+
+async function signalAsGuest(path) {
+    const hd = await fbGet(path + '/host');
+    if (!hd || !hd.sdp) throw new Error('no-host');
+    const pc = new RTCPeerConnection(RTC_ICE);
+    rtcPeer = pc;
+    await pc.setRemoteDescription({ type: 'offer', sdp: hd.sdp });
+    (hd.ice||[]).forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    const ice = await gatherIce(pc);
+    await fbSet(path + '/guest', { sdp: answer.sdp, ice });
+    return new Promise((resolve, reject) => {
+        const tid = setTimeout(() => reject(new Error('timeout')), 30000);
+        pc.ondatachannel = e => {
+            const dc = e.channel;
+            dc.onopen = () => { if (rtcPeer !== pc) { clearTimeout(tid); return; } clearTimeout(tid); resolve(makeConn(dc)); };
+            dc.onerror = () => { clearTimeout(tid); reject(new Error('datachannel')); };
+        };
+    });
+}
+
+// ── Matchmaking ───────────────────────────────────────────────────────────────
+function mmSlot() { return 'chess-mm-v2-' + Math.floor(Date.now() / 120000); }
+function setMMStatus(msg) { document.getElementById('mm-status').textContent = msg; }
 function showMMSearching(visible) {
     document.getElementById('mm-idle').style.display = visible ? 'none' : '';
     document.getElementById('mm-searching').style.display = visible ? '' : 'none';
 }
 
-function startMatchmaking() {
+async function startMatchmaking() {
+    if (!fbReady()) return;
     myPseudo = getStoredPseudo() || 'Joueur';
+    document.getElementById('mm-error').style.display = 'none';
     showMMSearching(true);
     setMMStatus('Connexion…');
     tryClaimSlot(mmSlot());
 }
 
-function tryClaimSlot(slot) {
-    if (peer) peer.destroy();
-    peer = new Peer(slot);
-    peer.on('open', () => {
-        // On est l'hôte : on attend quelqu'un
-        amHost = true;
-        setMMStatus('En attente d\'un adversaire…');
-        mmTimeout = setTimeout(() => {
-            // Personne dans ce slot, essayer le suivant
-            setMMStatus('Toujours en recherche…');
-            peer.destroy();
-            tryClaimSlot('chess-mm-v1-' + (Math.floor(Date.now() / 120000) + 1));
-        }, 90000);
-        peer.on('connection', c => {
+async function tryClaimSlot(slot) {
+    destroyRTC();
+    const path = 'chess-mm/' + slot;
+    try {
+        const claimed = await fbClaim(path + '/claimed', { t: Date.now() });
+        if (claimed) {
+            amHost = true;
+            setMMStatus('En attente d\'un adversaire…');
+            mmTimeout = setTimeout(() => {
+                setMMStatus('Toujours en recherche…');
+                fbDel(path);
+                tryClaimSlot('chess-mm-v2-' + (Math.floor(Date.now() / 120000) + 1));
+            }, 90000);
+            const c = await signalAsHost(path, null);
             clearTimeout(mmTimeout);
             showMMSearching(false);
-            attachConn(c);
-            c.on('open', () => { isOnline = true; startSetupPhase(); });
-        });
-    });
-    peer.on('error', err => {
-        if (err.type === 'unavailable-id') {
-            // Quelqu'un attend dans ce slot : on le rejoint
+            fbDel(path);
+            attachConn(c); startSetupPhase();
+        } else {
             amHost = false;
             setMMStatus('Adversaire trouvé ! Connexion…');
-            if (peer) peer.destroy();
-            peer = new Peer();
-            peer.on('open', () => {
-                const c = peer.connect(slot);
-                attachConn(c);
-                c.on('open', () => {
-                    clearTimeout(mmTimeout);
-                    showMMSearching(false);
-                    isOnline = true;
-                    startSetupPhase();
-                });
-            });
-            peer.on('error', () => {
-                // Le pair a disparu entre temps, on prend sa place
-                setMMStatus('Reconnexion…');
-                tryClaimSlot(slot);
-            });
-        } else {
-            setMMStatus('Erreur réseau. Réessaie.');
+            const c = await signalAsGuest(path);
+            clearTimeout(mmTimeout);
             showMMSearching(false);
+            fbDel(path);
+            attachConn(c); startSetupPhase();
         }
-    });
+    } catch(e) {
+        showMMSearching(false);
+        const el = document.getElementById('mm-error');
+        el.textContent = 'Erreur réseau. Réessaie.';
+        el.style.display = '';
+    }
 }
 
 function cancelMatchmaking() {
-    clearTimeout(mmTimeout);
-    if (peer) { peer.destroy(); peer = null; }
+    destroyRTC();
     showMMSearching(false);
 }
 
-// ── PeerJS multiplayer ────────────────────────────────────────────────────────
+// ── Multiplayer helpers ───────────────────────────────────────────────────────
 function generateCode() {
     const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     return Array.from({length:6},()=>c[Math.floor(Math.random()*c.length)]).join('');
@@ -1344,6 +1482,7 @@ function handleNetData(data) {
         oppPseudo=data.pseudo;
         oppMdmelo=data.mdmelo ?? null;
         if (data.pseudo && data.pseudo !== 'Joueur' && data.mdmelo != null) saveToLeaderboard(data.pseudo, data.mdmelo);
+        if (data.lb) mergeLeaderboard(data.lb);
         document.getElementById('sp-opp-name').textContent=oppPseudo;
         render();
     } else if (data.type==='game_start') {
@@ -1384,46 +1523,69 @@ function attachConn(c) {
 
 function startSetupPhase() {
     isOnline=true;
-    conn.send({type:'hello', pseudo:myPseudo, mdmelo:parseInt(localStorage.getItem('chess_mdmelo')||'1000')});
+    const lb = JSON.parse(localStorage.getItem('chess_leaderboard') || '[]');
+    conn.send({type:'hello', pseudo:myPseudo, mdmelo:parseInt(localStorage.getItem('chess_mdmelo')||'1000'), lb});
     showSetup();
 }
 
-function createGame() {
-    myPseudo=getStoredPseudo()||'Joueur';
-    amHost=true;
-    setLobbyStatus('Connexion au serveur…');
-    const code=generateCode();
-    if (peer) peer.destroy();
-    peer=new Peer(code);
-    peer.on('open', ()=>{
-        document.getElementById('code-display').style.display='block';
-        document.getElementById('code-text').textContent=code;
-        setLobbyStatus('En attente d\'un adversaire…');
-    });
-    peer.on('connection', c=>{
-        attachConn(c);
-        c.on('open', ()=>startSetupPhase());
-    });
-    peer.on('error', err=>{
-        if (err.type==='unavailable-id') createGame();
-        else setLobbyStatus('Erreur réseau. Réessaie.');
-    });
+function setCreateStatus(msg, isError) {
+    const el = document.getElementById('create-status');
+    el.textContent = msg;
+    el.style.color = isError ? '#e74c3c' : '';
+}
+function setJoinStatus(msg, isError) {
+    const el = document.getElementById('join-status');
+    el.textContent = msg;
+    el.style.color = isError ? '#e74c3c' : '';
 }
 
-function joinGame() {
-    myPseudo=getStoredPseudo()||'Joueur';
-    amHost=false;
-    const code=document.getElementById('code-input').value.trim().toUpperCase();
-    if (!code) return;
-    setLobbyStatus('Connexion en cours…');
-    if (peer) peer.destroy();
-    peer=new Peer();
-    peer.on('open', ()=>{
-        const c=peer.connect(code);
-        attachConn(c);
-        c.on('open', ()=>startSetupPhase());
-    });
-    peer.on('error', ()=>setLobbyStatus('Code invalide ou partie introuvable.'));
+async function createGame() {
+    if (!fbReady()) return;
+    myPseudo = getStoredPseudo() || 'Joueur';
+    amHost = true;
+    const btn = document.getElementById('btn-create');
+    btn.disabled = true; btn.textContent = '⏳ Connexion…';
+    setCreateStatus('Création de la partie…');
+    document.getElementById('code-display').style.display = 'none';
+    destroyRTC();
+    const code = generateCode();
+    const path = 'chess-game/' + code;
+    try {
+        const c = await signalAsHost(path, () => {
+            btn.disabled = false; btn.textContent = 'Créer';
+            document.getElementById('code-display').style.display = 'block';
+            document.getElementById('code-text').textContent = code;
+            setCreateStatus('En attente d\'un adversaire…');
+        });
+        fbDel(path);
+        attachConn(c); startSetupPhase();
+    } catch(e) {
+        btn.disabled = false; btn.textContent = 'Créer';
+        setCreateStatus('Erreur réseau. Réessaie.', true);
+    }
+}
+
+async function joinGame() {
+    if (!fbReady()) return;
+    myPseudo = getStoredPseudo() || 'Joueur';
+    amHost = false;
+    const code = document.getElementById('code-input').value.trim().toUpperCase();
+    if (code.length < 6) { setJoinStatus('Entre un code à 6 caractères.', true); return; }
+    const btn = document.getElementById('btn-join');
+    btn.disabled = true; btn.textContent = '⏳ Connexion…';
+    setJoinStatus('Connexion en cours…');
+    destroyRTC();
+    const path = 'chess-game/' + code;
+    try {
+        const c = await signalAsGuest(path);
+        btn.disabled = false; btn.textContent = 'Rejoindre';
+        fbDel(path);
+        attachConn(c); startSetupPhase();
+    } catch(e) {
+        btn.disabled = false; btn.textContent = 'Rejoindre';
+        if (e.message === 'no-host') setJoinStatus('Code invalide ou partie introuvable.', true);
+        else setJoinStatus('Erreur réseau. Réessaie.', true);
+    }
 }
 
 // ── Admin functions ───────────────────────────────────────────────────────────

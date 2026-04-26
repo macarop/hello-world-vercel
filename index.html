@@ -839,7 +839,7 @@
         const list = document.getElementById('lb-list');
         list.innerHTML = '';
         if (!lb.length) {
-            list.innerHTML = '<div class="lb-empty">Aucun joueur encore enregistré.<br>Joue une partie en ligne pour apparaître ici !</div>';
+            list.innerHTML = '<div class="lb-empty">Aucun joueur encore enregistré.<br>Les classements se partagent automatiquement entre joueurs en ligne.</div>';
         } else {
             const medals = ['🥇','🥈','🥉'];
             lb.forEach((p, i) => {
